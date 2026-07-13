@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    # Ortam değişkeni gelirse (Docker) onu kullan, gelmezse (IDE) localhost:5455 kullan
+    url: ${JDBC_DATABASE_URL:jdbc:postgresql://localhost:5455/aurora}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:dev}
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: product
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: product
+    liquibase-schema: product

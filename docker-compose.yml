@@ -1,0 +1,81 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: aurora
+    ports:
+      - "5455:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./compose/init-schemas.sql:/docker-entrypoint-initdb.d/01-schemas.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+  # --profile full: servislerin kendileri de konteyner olarak[cite: 1]
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    profiles: [ "full" ]
+    environment:
+      JDBC_DATABASE_URL: jdbc:postgresql://db:5432/aurora
+      DB_USER: postgres
+      DB_PASSWORD: dev
+      JWT_SECRET: local-dev-secret-change-me-32bytes!
+    ports: ["8081:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  product-service:
+    build:
+      context: .
+      dockerfile: product-service/Dockerfile
+    profiles: [ "full" ]
+    environment:
+      JDBC_DATABASE_URL: jdbc:postgresql://db:5432/aurora
+      DB_USER: postgres
+      DB_PASSWORD: dev
+      REDIS_URL: redis://redis:6379
+      INTERNAL_TOKEN: local-internal-token
+    ports: ["8082:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    profiles: [ "full" ]
+    environment:
+      JDBC_DATABASE_URL: jdbc:postgresql://db:5432/aurora
+      DB_USER: postgres
+      DB_PASSWORD: dev
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: local-dev-secret-change-me-32bytes!
+      INTERNAL_TOKEN: local-internal-token
+      PRODUCT_SERVICE_URL: http://product-service:8080
+    ports: ["8083:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata: {}

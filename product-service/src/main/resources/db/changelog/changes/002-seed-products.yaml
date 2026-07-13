@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-seed-products
+      author: aurora
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO product.products (name, unit_price, stock) VALUES
+                ('Aurora Mug', 1499, 50),
+                ('Aurora Tee', 2999, 12),
+                ('Aurora Sticker Pack', 499, 200)
+              ON CONFLICT (name) DO NOTHING;

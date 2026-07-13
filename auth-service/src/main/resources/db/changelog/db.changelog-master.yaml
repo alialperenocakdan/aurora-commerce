@@ -1,0 +1,2 @@
+databaseChangeLog:
+  - include: { file: changes/001-create-customers.yaml, relativeToChangelogFile: true }

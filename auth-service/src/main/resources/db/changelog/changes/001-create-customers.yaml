@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-customers
+      author: aurora
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE auth.customers (
+                id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+              );
+      rollback:
+        - sql: { sql: "DROP TABLE auth.customers;" }

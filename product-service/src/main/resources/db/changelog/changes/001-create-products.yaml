@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-products
+      author: aurora
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE product.products (
+                id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                unit_price BIGINT NOT NULL CHECK (unit_price >= 0),
+                stock INTEGER NOT NULL CHECK (stock >= 0)
+              );
+      rollback:
+        - sql: { sql: "DROP TABLE product.products;" }

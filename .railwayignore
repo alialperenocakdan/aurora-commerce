@@ -1,0 +1,6 @@
+target/
+.idea/
+.git/
+auth-service/target/
+product-service/target/
+order-service/target/

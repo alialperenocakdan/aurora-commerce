@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-orders
+      author: aurora
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE orders.orders (
+                id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                customer_id BIGINT NOT NULL,
+                total BIGINT NOT NULL CHECK (total >= 0),
+                status TEXT NOT NULL DEFAULT 'pending'
+                  CHECK (status IN ('pending','shipped','cancelled')),
+                idempotency_key TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+              );
+              
+              -- Çifte siparişi önlemek için Partial Unique Index
+              CREATE UNIQUE INDEX orders_idem_key ON orders.orders (idempotency_key)
+                WHERE idempotency_key IS NOT NULL;
+              
+              CREATE TABLE orders.order_items (
+                order_id BIGINT NOT NULL REFERENCES orders.orders(id) ON DELETE CASCADE,
+                product_id BIGINT NOT NULL,
+                quantity INTEGER NOT NULL CHECK (quantity > 0),
+                unit_price BIGINT NOT NULL CHECK (unit_price >= 0),
+                PRIMARY KEY (order_id, product_id)
+              );

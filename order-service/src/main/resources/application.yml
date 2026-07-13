@@ -1,0 +1,37 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    # Ortam değişkeni gelirse (Docker) onu kullan, gelmezse (IDE) localhost:5455 kullan
+    url: ${JDBC_DATABASE_URL:jdbc:postgresql://localhost:5455/aurora}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:dev}
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: orders
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: orders
+    liquibase-schema: orders
+
+
+jwt:
+  secret: aurora-super-secret-key-must-be-32-bytes-long!
+
+# Ürün servisine ve gizli kapısına ulaşmak için adres ve şifre
+product-service:
+  url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+  internal-token: ${INTERNAL_TOKEN:local-internal-token}
+  # Spring Security'nin rastgele şifre üretmesini durdurmak için sabit bir kullanıcı atıyoruz
+  spring:
+    security:
+      user:
+        name: aurora-admin
+        password: aurora-password

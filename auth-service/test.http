@@ -1,0 +1,17 @@
+### Kayıt olma isteği
+POST http://localhost:8081/auth/register
+Content-Type: application/json
+
+{
+  "email": "alperen@startbig.test",
+  "password": "devopspassword123"
+}
+
+### Giriş yapma isteği
+POST http://localhost:8081/auth/login
+Content-Type: application/json
+
+{
+  "email": "alperen@startbig.test",
+  "password": "devopspassword123"
+}
