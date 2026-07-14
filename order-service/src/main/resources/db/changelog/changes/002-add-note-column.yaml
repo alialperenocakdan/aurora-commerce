@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-add-note-column
+      author: developer
+      changes:
+        - addColumn:
+            tableName: orders
+            schemaName: orders
+            columns:
+              - column:
+                  name: note
+                  type: varchar(255)

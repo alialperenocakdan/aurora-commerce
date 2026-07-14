@@ -1,2 +1,5 @@
 databaseChangeLog:
-  - include: { file: changes/001-create-orders.yaml, relativeToChangelogFile: true }
+  - include:
+      file: db.changelog/changes/001-create-orders.yaml
+  - include:
+      file: db.changelog/changes/002-add-note-column.yaml
