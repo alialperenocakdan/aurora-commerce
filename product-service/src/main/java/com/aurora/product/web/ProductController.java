@@ -5,7 +5,8 @@ import com.aurora.product.domain.Product;
 import com.aurora.product.repo.ProductRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import java.util.List;
 
 // 2. DİKKAT: Sadece @Controller değil, @RestController olmak zorunda!
@@ -22,5 +23,11 @@ public class ProductController {
     @GetMapping("/products")
     public List<Product> getAllProducts() {
         return productRepository.findAll();
+    }
+    // Ürün ekleme metodu (POST)
+    @PostMapping("/products")
+    public Product createProduct(@RequestBody Product product) {
+        // Gelen JSON verisini Product entity'sine dönüştürüp veritabanına kaydeder
+        return productRepository.save(product);
     }
 }
