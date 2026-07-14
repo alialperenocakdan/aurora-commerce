@@ -20,6 +20,7 @@ import java.util.ArrayList;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -28,6 +29,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+        System.out.println("🕵️ Gelen Authorization Başlığı: " + authHeader);
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
@@ -47,6 +49,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 
             } catch (Exception e) {
+                // HATAYI YAKALAMAK İÇİN BURAYI EKLİYORUZ:
+                System.out.println("🚨 DİKKAT! Token çözülürken bir hata oluştu!");
+                System.out.println("🚨 Hata Mesajı: " + e.getMessage());
+                e.printStackTrace();
+
                 // Token sahteyse veya süresi geçmişse sessizce reddedilecek
                 SecurityContextHolder.clearContext();
             }

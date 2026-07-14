@@ -23,3 +23,6 @@ spring:
 
 jwt:
   secret: aurora-super-secret-key-must-be-32-bytes-long!
+  logging:
+    level:
+      org.springframework.security: TRACE
