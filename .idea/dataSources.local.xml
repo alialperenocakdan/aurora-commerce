@@ -7,5 +7,11 @@
       <user-name>postgre</user-name>
       <schema-mapping />
     </data-source>
+    <data-source name="aurora_db_pzlm@dpg-d9aso9laeets739slna0-a.oregon-postgres.render.com" uuid="8186a65c-2c88-4395-b4bf-ece006dc018f">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="POSTGRES" />
+      <secret-storage>master_key</secret-storage>
+      <user-name>aurora_db_pzlm_user</user-name>
+      <schema-mapping />
+    </data-source>
   </component>
 </project>

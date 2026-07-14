@@ -1,0 +1,3 @@
+CREATE SCHEMA product;
+CREATE SCHEMA auth;
+CREATE SCHEMA "order";

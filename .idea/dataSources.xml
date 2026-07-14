@@ -8,5 +8,15 @@
       <jdbc-url>jdbc:postgresql://localhost:5432/postgres</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="aurora_db_pzlm@dpg-d9aso9laeets739slna0-a.oregon-postgres.render.com" uuid="8186a65c-2c88-4395-b4bf-ece006dc018f">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://dpg-d9aso9laeets739slna0-a.oregon-postgres.render.com:5432/aurora_db_pzlm</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+      <driver-properties>
+        <property name="sslmode" value="require" />
+      </driver-properties>
+    </data-source>
   </component>
 </project>
