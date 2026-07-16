@@ -42,4 +42,33 @@ public class InternalStockController {
             return ResponseEntity.status(409).body(Map.of("error", "out_of_stock"));
         }
     }
+    // Stok iade (Saga Telafisi)
+    @PostMapping("/restore")
+    public ResponseEntity<?> restore(@RequestHeader("X-Internal-Token") String token,
+                                     @RequestBody Map<String, List<Map<String, Object>>> request) {
+
+        System.out.println("İade (Restore) Çağrısı Alındı!");
+
+        // 1. Güvenlik Kontrolü: İstek gerçekten bizim order-service'ten mi geliyor?
+        if (!internalToken.equals(token)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        try {
+            // 2. İade işlemini servise devret
+            stockService.restore(request.get("lines"));
+            System.out.println(" Stoklar başarıyla iade edildi.");
+            return ResponseEntity.ok(Map.of("restored", true));
+        } catch (Exception e) {
+            System.out.println(" İade işlemi sırasında hata: " + e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+
+
+
+
+
+
 }
