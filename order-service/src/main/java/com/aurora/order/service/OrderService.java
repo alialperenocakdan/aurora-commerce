@@ -3,8 +3,12 @@ package com.aurora.order.service;
 import com.aurora.order.client.ProductClient;
 import com.aurora.order.domain.Order;
 import com.aurora.order.domain.OrderItem;
+import com.aurora.order.exception.DownstreamUnavailableException;
+import com.aurora.order.exception.OutOfStockException;
 import com.aurora.order.repo.OrderRepository;
 import feign.FeignException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +34,7 @@ public class OrderService {
     }
 
     @Transactional
+    @CircuitBreaker(name = "productService", fallbackMethod = "checkoutFallback")
     public Order checkout(Long customerId, List<Map<String, Object>> requestLines, String idempotencyKey) {
 
         // 1. AYNI ÜRÜNLERİ TOPLA
@@ -50,19 +55,16 @@ public class OrderService {
             // Feign Client üzerinden Ürün Servisine istek atıyoruz
             deductResponse = productClient.deduct(internalToken, Map.of("lines", deductRequest));
         } catch (FeignException.Conflict e) {
-            throw new RuntimeException("out_of_stock");
+            throw new OutOfStockException();
         } catch (Exception e) {
             System.err.println(" FEIGN İLETİŞİM HATASI: " + e.getMessage());
             e.printStackTrace();
-            throw new RuntimeException("downstream_unavailable");
+            throw new DownstreamUnavailableException("product_service_unreachable");
         }
         List<Map<String, Object>> pricedLines = (List<Map<String, Object>>) deductResponse.get("lines");
 
         // 3. İKİ AŞAMALI KAYIT (TWO-STEP SAVE)
         try {
-            if (true) {
-                throw new RuntimeException("KASITLI SAGA HATASI: Sipariş kaydedilemedi, stoklar geri dönmeli!");
-            }
             // AŞAMA 1: Sadece boş siparişi kaydet ki veritabanı bize bir "ID" üretsin
             Order order = new Order();
             order.setCustomerId(customerId);
@@ -98,5 +100,13 @@ public class OrderService {
             productClient.restore(internalToken, Map.of("lines", deductRequest));
             throw new RuntimeException("order_failed_stock_restored", e);
         }
+    }
+
+    // Şartel AÇIK (Open) konumdayken çağrılır: product-service'e hiç gitmeden anında hata döner.
+    // Parametre tipi CallNotPermittedException olduğu için SADECE bu durumda devreye girer;
+    // out_of_stock gibi iş kuralı hataları buraya uğramadan olduğu gibi yukarı fırlar.
+    public Order checkoutFallback(Long customerId, List<Map<String, Object>> requestLines, String idempotencyKey, CallNotPermittedException ex) {
+        System.err.println("CIRCUIT BREAKER AKTİF! product-service erişilemez durumda: " + ex.getMessage());
+        throw new DownstreamUnavailableException("circuit_open");
     }
 }

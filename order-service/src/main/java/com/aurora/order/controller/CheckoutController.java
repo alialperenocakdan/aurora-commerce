@@ -1,6 +1,8 @@
 package com.aurora.order.controller;
 
 import com.aurora.order.domain.Order;
+import com.aurora.order.exception.DownstreamUnavailableException;
+import com.aurora.order.exception.OutOfStockException;
 import com.aurora.order.service.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,10 +41,12 @@ public class CheckoutController {
             // Müşteriye sadece Sipariş Numarasını dön
             return ResponseEntity.ok(Map.of("orderId", order.getId()));
 
+        } catch (OutOfStockException e) {
+            return ResponseEntity.status(409).body(Map.of("error", "out_of_stock"));
+        } catch (DownstreamUnavailableException e) {
+            // Circuit breaker açık veya product-service'e ulaşılamıyor: 503 Service Unavailable
+            return ResponseEntity.status(503).body(Map.of("error", "service_unavailable", "detail", e.getMessage()));
         } catch (RuntimeException e) {
-            if ("out_of_stock".equals(e.getMessage())) {
-                return ResponseEntity.status(409).body(Map.of("error", "out_of_stock"));
-            }
             return ResponseEntity.status(500).body(Map.of("error", "internal_error", "detail", e.getMessage()));
         }
     }

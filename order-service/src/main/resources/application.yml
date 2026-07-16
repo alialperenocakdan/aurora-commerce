@@ -10,6 +10,15 @@ spring:
   data:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
+  cloud:
+    openfeign:
+      client:
+        config:
+          # product-service cevap vermiyorsa 60 saniye bekleme; hızlı pes et ki
+          # circuit breaker hatayı sayıp şarteli indirebilsin.
+          default:
+            connectTimeout: 3000
+            readTimeout: 5000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -29,9 +38,22 @@ jwt:
 product-service:
   url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
   internal-token: ${INTERNAL_TOKEN:local-internal-token}
-  # Spring Security'nin rastgele şifre üretmesini durdurmak için sabit bir kullanıcı atıyoruz
-  spring:
-    security:
-      user:
-        name: aurora-admin
-        password: aurora-password
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      productService:
+        # Son 10 çağrıyı analiz et
+        slidingWindowSize: 10
+        # Sağlıklı karar için en az 5 çağrı görülsün
+        minimumNumberOfCalls: 5
+        # Bu çağrıların %50'si hata verirse devreyi AÇ (şarteli indir)
+        failureRateThreshold: 50
+        # Devre AÇIK (Open) konumda 15 saniye beklesin; bu sırada gelen tüm istekler anında reddedilir.
+        waitDurationInOpenState: 15s
+        # 15 sn sonra devreyi YARI-AÇIK (Half-Open) yapıp deneme amaçlı 3 isteğe izin ver.
+        permittedNumberOfCallsInHalfOpenState: 3
+        # Şarteli SADECE altyapı hatası indirir. Stok yetersizliği (OutOfStockException)
+        # bir iş kuralıdır, listede olmadığı için hata olarak SAYILMAZ.
+        recordExceptions:
+          - com.aurora.order.exception.DownstreamUnavailableException
