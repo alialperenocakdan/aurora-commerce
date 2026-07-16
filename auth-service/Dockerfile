@@ -8,7 +8,7 @@ COPY auth-service/pom.xml auth-service/
 COPY product-service/pom.xml product-service/
 COPY order-service/pom.xml order-service/
 
-# Dikkat: < ve > işaretleri yok, doğrudan klasör adını yazdık!
+
 RUN mvn -q -pl auth-service -am dependency:go-offline
 
 # Tüm kodları içeri alıp testleri atlayarak JAR dosyasını üretiyoruz

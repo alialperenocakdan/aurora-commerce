@@ -22,7 +22,7 @@ public class AuthService {
     }
 
     public Long register(String email, String password) {
-        // Gövde doğrulama: bozuk e-posta veya 8 karakterden kısa şifre → 422
+        //bozuk e-posta veya 8 karakterden kısa şifre → 422
         if (email == null || !email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
                 || password == null || password.length() < 8) {
             throw new RuntimeException("invalid_request");
@@ -45,7 +45,7 @@ public class AuthService {
         Customer customer = repository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("invalid_credentials"));
 
-        // Gelen şifre ile veritabanındaki kriptolu şifre eşleşiyor mu?
+        // Gelen şifre ile veritabanındaki kriptolu şifre eşleşiyor mu
         if (!passwordEncoder.matches(password, customer.getPasswordHash())) {
             throw new RuntimeException("invalid_credentials");
         }

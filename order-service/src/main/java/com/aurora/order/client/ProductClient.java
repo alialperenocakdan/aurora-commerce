@@ -10,18 +10,18 @@ import java.util.Map;
 @FeignClient(name = "product-service", url = "${product-service.url}")
 public interface ProductClient {
 
-    // 1. Sepet için ürün bilgisi çekme (GET /products/{id})
+    //ürün bilgisi çekme
     @GetMapping("/products/{id}")
     Map<String, Object> getProduct(@PathVariable("id") Long id);
 
-    // 2. Stok düşme (POST /internal/stock/deduct)
+    //Stok düşme
     @PostMapping(value = "/internal/stock/deduct", consumes = "application/json")
     Map<String, Object> deduct(
             @RequestHeader("X-Internal-Token") String token,
             @RequestBody Map<String, Object> request
     );
 
-    // 3. Stok iade etme (POST /internal/stock/restore)
+    //Stok iade etme
     @PostMapping(value = "/internal/stock/restore", consumes = "application/json")
     void restore(
             @RequestHeader("X-Internal-Token") String token,

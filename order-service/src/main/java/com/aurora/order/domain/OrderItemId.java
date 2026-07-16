@@ -3,7 +3,7 @@ package com.aurora.order.domain;
 import java.io.Serializable;
 import java.util.Objects;
 
-// Composite Key (Çoklu Birincil Anahtar) tanımı
+// Composite Key tanımı
 public class OrderItemId implements Serializable {
     private Long orderId;
     private Long productId;

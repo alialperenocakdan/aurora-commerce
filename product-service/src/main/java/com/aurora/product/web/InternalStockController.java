@@ -28,8 +28,8 @@ public class InternalStockController {
                                     @RequestBody Map<String, List<Map<String, Object>>> request) {
 
         // DEĞİŞKEN İSİMLERİ DÜZELTİLDİ
-        System.out.println("🕵️ Order Servisinden Gelen Mühür: " + token);
-        System.out.println("🔐 Product Servisinin Beklediği Mühür: " + internalToken);
+        System.out.println(" Order Servisinden Gelen Mühür: " + token);
+        System.out.println(" Product Servisinin Beklediği Mühür: " + internalToken);
 
         if (!internalToken.equals(token)) {
             return ResponseEntity.status(403).build(); // Yanlış şifreyse kov!

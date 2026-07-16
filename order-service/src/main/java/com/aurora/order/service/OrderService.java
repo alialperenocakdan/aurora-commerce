@@ -43,13 +43,12 @@ public class OrderService {
         this.redisTemplate = redisTemplate;
     }
 
-    // Replay cevabı için: aynı Idempotency-Key ile daha önce oluşmuş siparişi bul
+    //aynı Idempotency-Key ile daha önce oluşmuş siparişi bul
     public Optional<Order> findByIdempotencyKey(String key) {
         return orderRepository.findByIdempotencyKey(key);
     }
 
-    // Redis idempotency'de yalnızca HIZLI YOL'dur; asıl garanti orders_idem_key unique index'idir.
-    // Bu yüzden Redis çökükse checkout'u düşürmeyiz — sessizce DB garantisine geri çekiliriz.
+
     private String safeRedisGet(String key) {
         try { return redisTemplate.opsForValue().get(key); }
         catch (Exception e) { System.err.println("Redis erisilemedi (get), DB garantisiyle devam: " + e.getMessage()); return null; }
@@ -74,8 +73,7 @@ public class OrderService {
     @CircuitBreaker(name = "productService", fallbackMethod = "checkoutFallback")
     public Order checkout(Long customerId, List<Map<String, Object>> requestLines, String idempotencyKey) {
 
-        // 0. GÖVDE DOĞRULAMA: boş lines veya quantity <= 0 → 422.
-        // Negatif quantity ayrıca "stock - (-3)" ile stok ARTIRABİLECEĞİ için burada kesilmesi şarttır.
+
         if (requestLines == null || requestLines.isEmpty()) {
             throw new InvalidRequestException();
         }
@@ -87,7 +85,7 @@ public class OrderService {
             }
         }
 
-        // 0.5 İDEMPOTENCY REPLAY: aynı anahtarla sipariş zaten varsa stoka hiç dokunmadan onu dön.
+
         if (idempotencyKey != null) {
             // Hızlı yol: Redis'te orderId yazılıysa DB'ye inmeden dön
             String cached = safeRedisGet(IDEM_PREFIX + idempotencyKey);
@@ -103,7 +101,7 @@ public class OrderService {
             safeRedisSetIfAbsent(IDEM_PREFIX + idempotencyKey, "PENDING");
         }
 
-        // 1. AYNI ÜRÜNLERİ TOPLA
+        //AYNI ÜRÜNLERİ TOPLA
         Map<Long, Integer> aggregatedLines = new HashMap<>();
         for (Map<String, Object> line : requestLines) {
             Long pId = ((Number) line.get("productId")).longValue();
@@ -115,7 +113,7 @@ public class OrderService {
         List<Map<String, Object>> deductRequest = new ArrayList<>();
         aggregatedLines.forEach((pId, qty) -> deductRequest.add(Map.of("productId", pId, "quantity", qty)));
 
-        // 2. STOKLARI DÜŞ VE FİYATLARI AL
+        //STOKLARI DÜŞ VE FİYATLARI AL
         Map<String, Object> deductResponse; // Dönüş tipini Map yaptık
         try {
             // Feign Client üzerinden Ürün Servisine istek atıyoruz
@@ -129,7 +127,7 @@ public class OrderService {
         }
         List<Map<String, Object>> pricedLines = (List<Map<String, Object>>) deductResponse.get("lines");
 
-        // 3. İKİ AŞAMALI KAYIT (TWO-STEP SAVE)
+        //İKİ AŞAMALI KAYIT (TWO-STEP SAVE)
         try {
             // AŞAMA 1: Sadece boş siparişi kaydet ki veritabanı bize bir "ID" üretsin
             Order order = new Order();
@@ -158,7 +156,7 @@ public class OrderService {
 
             order.setTotal(totalAmount);
 
-            // İçi dolan siparişi son haliyle tekrar kaydet (Güncelle)
+            // İçi dolan siparişi son haliyle tekrar kaydet
             Order saved = orderRepository.save(order);
 
             // İdempotency anahtarını Redis'te siparişe bağla: replay artık DB'ye inmeden cevaplanır
@@ -176,7 +174,7 @@ public class OrderService {
             }
             throw new RuntimeException("order_failed_stock_restored", e);
         } catch (Exception e) {
-            // SAGA TELAFİSİ: Eğer veritabanına yazarken hata çıkarsa, düşülen stoku geri ver
+            // SAGA TELAFİSİ
             productClient.restore(internalToken, Map.of("lines", deductRequest));
             // Anahtar PENDING'de kalmasın ki müşteri güvenle retry edebilsin
             if (idempotencyKey != null) {
@@ -186,8 +184,7 @@ public class OrderService {
         }
     }
 
-    // Şartel AÇIK (Open) konumdayken çağrılır: product-service'e hiç gitmeden anında hata döner.
-    // Parametre tipi CallNotPermittedException olduğu için SADECE bu durumda devreye girer;
+
     // out_of_stock gibi iş kuralı hataları buraya uğramadan olduğu gibi yukarı fırlar.
     public Order checkoutFallback(Long customerId, List<Map<String, Object>> requestLines, String idempotencyKey, CallNotPermittedException ex) {
         System.err.println("CIRCUIT BREAKER AKTİF! product-service erişilemez durumda: " + ex.getMessage());

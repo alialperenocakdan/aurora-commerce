@@ -24,7 +24,7 @@ public class CartService {
         this.productClient = productClient;
     }
 
-    // 1. SEPETE ÜRÜN EKLE
+    //SEPETE ÜRÜN EKLE
     public void addItem(Long customerId, Long productId, Integer quantity) {
         if (quantity <= 0) throw new IllegalArgumentException("invalid_request");
 
@@ -49,7 +49,7 @@ public class CartService {
         redisTemplate.expire(key, Duration.ofHours(24));
     }
 
-    // 2. SEPETTEN ÜRÜN ÇIKAR
+    //SEPETTEN ÜRÜN ÇIKAR
     public void removeItem(Long customerId, Long productId) {
         redisTemplate.opsForHash().delete(CART_PREFIX + customerId, productId.toString());
     }

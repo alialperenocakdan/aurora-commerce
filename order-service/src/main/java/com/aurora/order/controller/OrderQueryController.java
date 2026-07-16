@@ -21,7 +21,7 @@ public class OrderQueryController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getOrder(@PathVariable String id) {
 
-        // 1. Manuel Sayısal Kontrol (Harf varsa 404 dön)
+        //Sayısal Kontrol
         char[] chars = id.toCharArray();
         int charCount = 0;
         for (char c : chars) {
@@ -30,21 +30,21 @@ public class OrderQueryController {
         }
         if (charCount == 0) return ResponseEntity.status(404).body(Map.of("error", "not_found"));
 
-        // 2. Veritabanından bul
+        //Veritabanından bul
         Long orderId = Long.parseLong(id);
         Order order = orderRepository.findById(orderId).orElse(null);
         if (order == null) return ResponseEntity.status(404).body(Map.of("error", "not_found"));
 
-        // 3. Token'dan ID'yi al
+        //Token'dan ID'yi al
         String customerIdStr = SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString();
         Long customerId = Long.parseLong(customerIdStr);
 
-        // 4. Yetki Kontrolü
+        //Yetki Kontrolü
         if (!order.getCustomerId().equals(customerId)) {
             return ResponseEntity.status(403).body(Map.of("error", "forbidden"));
         }
 
-        // 5. Her şey yolundaysa siparişi dön
+        //Her şey yolundaysa siparişi dön
         return ResponseEntity.ok(order);
     }
 }

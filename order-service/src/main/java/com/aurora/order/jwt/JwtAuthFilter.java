@@ -30,14 +30,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String header = request.getHeader("Authorization");
 
-        // Eğer istekte "Bearer <Token>" şeklinde bir bilet varsa
+        // Bearer <Token>" bilet varsa
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7); // "Bearer " kısmını at
             try {
                 SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
                 Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
 
-                // Biletten müşteri ID'sini (sub) çıkar ve sisteme "Bu müşteri giriş yaptı" de
+                // Biletten müşteri ID'sini çıkar ve sisteme "Bu müşteri giriş yaptı" de
                 String customerId = claims.getSubject();
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(customerId, null, java.util.Collections.emptyList());
                 SecurityContextHolder.getContext().setAuthentication(auth);

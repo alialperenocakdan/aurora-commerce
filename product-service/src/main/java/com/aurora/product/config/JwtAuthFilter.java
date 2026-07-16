@@ -29,7 +29,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
-        System.out.println("🕵️ Gelen Authorization Başlığı: " + authHeader);
+        System.out.println("Gelen Authorization Başlığı: " + authHeader);
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
@@ -50,8 +50,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             } catch (Exception e) {
                 // HATAYI YAKALAMAK İÇİN BURAYI EKLİYORUZ:
-                System.out.println("🚨 DİKKAT! Token çözülürken bir hata oluştu!");
-                System.out.println("🚨 Hata Mesajı: " + e.getMessage());
+                System.out.println("DİKKAT! Token çözülürken bir hata oluştu!");
+                System.out.println("Hata Mesajı: " + e.getMessage());
                 e.printStackTrace();
 
                 // Token sahteyse veya süresi geçmişse sessizce reddedilecek

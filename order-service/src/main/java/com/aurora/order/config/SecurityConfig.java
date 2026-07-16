@@ -37,7 +37,7 @@ public class SecurityConfig {
                     res.setContentType("application/json");
                     res.getWriter().write("{\"error\":\"unauthorized\"}");
                 }))
-                // Kendi yazdığımız bilet kontrolcüsünü, Spring'in varsayılan güvenlik duvarının önüne koyuyoruz
+                //bilet kontrolcüsü
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

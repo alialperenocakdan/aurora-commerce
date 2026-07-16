@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/checkout") // Artık yolumuz /orders değil /checkout
+@RequestMapping("/checkout")
 public class CheckoutController {
 
     private final OrderService orderService;
@@ -28,16 +28,16 @@ public class CheckoutController {
     public ResponseEntity<?> placeOrder(@RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                         @RequestBody Map<String, List<Map<String, Object>>> request) {
         try {
-            // 1. Müşteriyi Token'dan bul
+            //Müşteriyi Token'dan bul
             String customerIdStr = SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString();
             Long customerId = Long.parseLong(customerIdStr);
 
-            // 2. İdempotency anahtarı yoksa kendimiz üretelim (Çifte siparişi önlemek için)
+            //İdempotency anahtarı yoksa kendimiz üretelim (Çifte siparişi önlemek için)
             if (idempotencyKey == null) {
                 idempotencyKey = UUID.randomUUID().toString();
             }
 
-            // 3. Siparişi ver!
+            //Siparişi ver
             Order order = orderService.checkout(customerId, request.get("lines"), idempotencyKey);
 
             // Müşteriye sadece Sipariş Numarasını dön
