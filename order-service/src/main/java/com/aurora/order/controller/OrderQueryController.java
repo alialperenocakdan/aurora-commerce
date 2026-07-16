@@ -18,6 +18,13 @@ public class OrderQueryController {
         this.orderRepository = orderRepository;
     }
 
+    // Token'daki müşterinin tüm siparişleri (en yeni en üstte)
+    @GetMapping
+    public ResponseEntity<?> getMyOrders() {
+        Long customerId = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
+        return ResponseEntity.ok(orderRepository.findByCustomerIdOrderByIdDesc(customerId));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getOrder(@PathVariable String id) {
 

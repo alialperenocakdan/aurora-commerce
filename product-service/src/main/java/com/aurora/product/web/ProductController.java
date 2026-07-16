@@ -1,4 +1,4 @@
-// 1. DİKKAT: Paket adı uygulamanın ana paketiyle (com.aurora.product) başlamak zorundadır!
+
 package com.aurora.product.web;
 
 import com.aurora.product.domain.Product;
@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import java.util.List;
 import java.util.Map;
 
-// 2. DİKKAT: Sadece @Controller değil, @RestController olmak zorunda!
+
 @RestController
 public class ProductController {
 
@@ -22,7 +22,7 @@ public class ProductController {
         this.productRepository = productRepository;
     }
 
-    // 3. DİKKAT: Adresin tam olarak "/products" olduğundan emin ol!
+
     @GetMapping("/products")
     public List<Product> getAllProducts() {
         return productRepository.findAll();

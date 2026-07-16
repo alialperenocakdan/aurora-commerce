@@ -50,4 +50,12 @@ public class CartController {
         // Silme sonrası güncel sepeti dönüyoruz
         return ResponseEntity.ok(cartService.getCart(customerId));
     }
+
+    // Sepeti tamamen boşalt — başarılı checkout sonrası istemci çağırır
+    @DeleteMapping
+    public ResponseEntity<?> clearCart() {
+        Long customerId = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
+        cartService.clearCart(customerId);
+        return ResponseEntity.ok(cartService.getCart(customerId));
+    }
 }

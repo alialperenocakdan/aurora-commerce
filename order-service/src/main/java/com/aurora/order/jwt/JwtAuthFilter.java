@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    // Auth servisiyle AYNI gizli şifreyi kullanarak gelen biletin sahte olup olmadığını anlarız
+
     @Value("${jwt.secret}")
     private String secret;
 

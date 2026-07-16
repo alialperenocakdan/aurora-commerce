@@ -28,7 +28,7 @@ public class SecurityConfig {
                 .cors(org.springframework.security.config.Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Müşteri vitrini herkese açık
+                        // Müşteri vitrini herkese açık
                         .requestMatchers(HttpMethod.GET, "/products", "/products/**").permitAll()
 
                         // Arka kapıyı Spring Security'den muaf tutuyoruz.
@@ -47,7 +47,7 @@ public class SecurityConfig {
                     res.setContentType("application/json");
                     res.getWriter().write("{\"error\":\"unauthorized\"}");
                 }))
-                // 2. KRİTİK NOKTA: Token okuma gözlüğümüzü filtre zincirine ekliyoruz!
+                //  Token okuma gözlüğümüzü filtre zincirine ekliyoruz!
                 // Bu sayede Spring Security "authenticated" yapmadan önce bizim filtremiz token'ı çözecek.
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

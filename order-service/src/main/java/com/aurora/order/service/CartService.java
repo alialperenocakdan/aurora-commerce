@@ -54,6 +54,11 @@ public class CartService {
         redisTemplate.opsForHash().delete(CART_PREFIX + customerId, productId.toString());
     }
 
+    //SEPETİ TAMAMEN BOŞALT (başarılı checkout sonrası istemci bunu çağırır)
+    public void clearCart(Long customerId) {
+        redisTemplate.delete(CART_PREFIX + customerId);
+    }
+
     //SEPETİ GÖRÜNTÜLE VE FİYATLARI HESAPLA
     public Map<String, Object> getCart(Long customerId) {
         String key = CART_PREFIX + customerId;

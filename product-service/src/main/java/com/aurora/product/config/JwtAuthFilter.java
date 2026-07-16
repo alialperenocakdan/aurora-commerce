@@ -49,7 +49,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 
             } catch (Exception e) {
-                // HATAYI YAKALAMAK İÇİN BURAYI EKLİYORUZ:
+
                 System.out.println("DİKKAT! Token çözülürken bir hata oluştu!");
                 System.out.println("Hata Mesajı: " + e.getMessage());
                 e.printStackTrace();
