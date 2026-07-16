@@ -52,7 +52,7 @@ public class OrderService {
         } catch (FeignException.Conflict e) {
             throw new RuntimeException("out_of_stock");
         } catch (Exception e) {
-            System.err.println("🚨 FEIGN İLETİŞİM HATASI: " + e.getMessage());
+            System.err.println(" FEIGN İLETİŞİM HATASI: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("downstream_unavailable");
         }
@@ -60,6 +60,9 @@ public class OrderService {
 
         // 3. İKİ AŞAMALI KAYIT (TWO-STEP SAVE)
         try {
+            if (true) {
+                throw new RuntimeException("KASITLI SAGA HATASI: Sipariş kaydedilemedi, stoklar geri dönmeli!");
+            }
             // AŞAMA 1: Sadece boş siparişi kaydet ki veritabanı bize bir "ID" üretsin
             Order order = new Order();
             order.setCustomerId(customerId);
