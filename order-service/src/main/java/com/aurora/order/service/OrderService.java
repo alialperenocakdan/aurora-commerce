@@ -48,6 +48,28 @@ public class OrderService {
         return orderRepository.findByIdempotencyKey(key);
     }
 
+    // Redis idempotency'de yalnızca HIZLI YOL'dur; asıl garanti orders_idem_key unique index'idir.
+    // Bu yüzden Redis çökükse checkout'u düşürmeyiz — sessizce DB garantisine geri çekiliriz.
+    private String safeRedisGet(String key) {
+        try { return redisTemplate.opsForValue().get(key); }
+        catch (Exception e) { System.err.println("Redis erisilemedi (get), DB garantisiyle devam: " + e.getMessage()); return null; }
+    }
+
+    private void safeRedisSet(String key, String value) {
+        try { redisTemplate.opsForValue().set(key, value, Duration.ofHours(24)); }
+        catch (Exception e) { System.err.println("Redis erisilemedi (set): " + e.getMessage()); }
+    }
+
+    private void safeRedisSetIfAbsent(String key, String value) {
+        try { redisTemplate.opsForValue().setIfAbsent(key, value, Duration.ofHours(24)); }
+        catch (Exception e) { System.err.println("Redis erisilemedi (setnx): " + e.getMessage()); }
+    }
+
+    private void safeRedisDelete(String key) {
+        try { redisTemplate.delete(key); }
+        catch (Exception e) { System.err.println("Redis erisilemedi (del): " + e.getMessage()); }
+    }
+
     @Transactional
     @CircuitBreaker(name = "productService", fallbackMethod = "checkoutFallback")
     public Order checkout(Long customerId, List<Map<String, Object>> requestLines, String idempotencyKey) {
@@ -68,7 +90,7 @@ public class OrderService {
         // 0.5 İDEMPOTENCY REPLAY: aynı anahtarla sipariş zaten varsa stoka hiç dokunmadan onu dön.
         if (idempotencyKey != null) {
             // Hızlı yol: Redis'te orderId yazılıysa DB'ye inmeden dön
-            String cached = redisTemplate.opsForValue().get(IDEM_PREFIX + idempotencyKey);
+            String cached = safeRedisGet(IDEM_PREFIX + idempotencyKey);
             if (cached != null && !"PENDING".equals(cached)) {
                 Order existing = orderRepository.findById(Long.parseLong(cached)).orElse(null);
                 if (existing != null) return existing;
@@ -78,7 +100,7 @@ public class OrderService {
             if (existing.isPresent()) return existing.get();
 
             // Ön kapı: anahtarı PENDING olarak rezerve et (24 saat)
-            redisTemplate.opsForValue().setIfAbsent(IDEM_PREFIX + idempotencyKey, "PENDING", Duration.ofHours(24));
+            safeRedisSetIfAbsent(IDEM_PREFIX + idempotencyKey, "PENDING");
         }
 
         // 1. AYNI ÜRÜNLERİ TOPLA
@@ -141,7 +163,7 @@ public class OrderService {
 
             // İdempotency anahtarını Redis'te siparişe bağla: replay artık DB'ye inmeden cevaplanır
             if (idempotencyKey != null) {
-                redisTemplate.opsForValue().set(IDEM_PREFIX + idempotencyKey, saved.getId().toString(), Duration.ofHours(24));
+                safeRedisSet(IDEM_PREFIX + idempotencyKey, saved.getId().toString());
             }
             return saved;
 
@@ -158,7 +180,7 @@ public class OrderService {
             productClient.restore(internalToken, Map.of("lines", deductRequest));
             // Anahtar PENDING'de kalmasın ki müşteri güvenle retry edebilsin
             if (idempotencyKey != null) {
-                redisTemplate.delete(IDEM_PREFIX + idempotencyKey);
+                safeRedisDelete(IDEM_PREFIX + idempotencyKey);
             }
             throw new RuntimeException("order_failed_stock_restored", e);
         }
