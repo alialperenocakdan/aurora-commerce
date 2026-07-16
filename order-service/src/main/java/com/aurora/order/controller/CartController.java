@@ -42,4 +42,12 @@ public class CartController {
         Long customerId = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
         return ResponseEntity.ok(cartService.getCart(customerId));
     }
+
+    @DeleteMapping("/items/{productId}")
+    public ResponseEntity<?> removeItemFromCart(@PathVariable Long productId) {
+        Long customerId = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
+        cartService.removeItem(customerId, productId);
+        // Silme sonrası güncel sepeti dönüyoruz
+        return ResponseEntity.ok(cartService.getCart(customerId));
+    }
 }

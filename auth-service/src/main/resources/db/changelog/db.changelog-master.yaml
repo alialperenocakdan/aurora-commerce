@@ -1,2 +1,3 @@
 databaseChangeLog:
   - include: { file: changes/001-create-customers.yaml, relativeToChangelogFile: true }
+  - include: { file: changes/002-seed-demo-customer.yaml, relativeToChangelogFile: true }

@@ -49,6 +49,11 @@ public class CartService {
         redisTemplate.expire(key, Duration.ofHours(24));
     }
 
+    // 2. SEPETTEN ÜRÜN ÇIKAR
+    public void removeItem(Long customerId, Long productId) {
+        redisTemplate.opsForHash().delete(CART_PREFIX + customerId, productId.toString());
+    }
+
     //SEPETİ GÖRÜNTÜLE VE FİYATLARI HESAPLA
     public Map<String, Object> getCart(Long customerId) {
         String key = CART_PREFIX + customerId;

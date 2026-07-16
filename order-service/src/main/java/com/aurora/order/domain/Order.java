@@ -29,6 +29,9 @@ public class Order {
 
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
+    // Wire formatı sözleşmesi: RFC3339 UTC, sondaki Z, salise YOK (ör. 2026-01-01T00:00:00Z)
+    @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING,
+            pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 

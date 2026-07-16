@@ -22,6 +22,12 @@ public class AuthService {
     }
 
     public Long register(String email, String password) {
+        // Gövde doğrulama: bozuk e-posta veya 8 karakterden kısa şifre → 422
+        if (email == null || !email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+                || password == null || password.length() < 8) {
+            throw new RuntimeException("invalid_request");
+        }
+
         // E-posta daha önce alınmış mı kontrol et
         if (repository.existsByEmail(email)) {
             throw new RuntimeException("email_taken");

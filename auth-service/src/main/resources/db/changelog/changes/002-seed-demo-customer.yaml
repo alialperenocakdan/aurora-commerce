@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-seed-demo-customer
+      author: aurora
+      changes:
+        - sql:
+            sql: |
+              -- Şifre: demo1234 (BCrypt); ON CONFLICT sayesinde tekrar çalıştırma idempotenttir
+              INSERT INTO auth.customers (email, password_hash)
+              VALUES ('demo@aurora.test', '$2y$10$nNvA4b.lhtj3bEWwxX/Lz.Y3ttW6ZZ6oizdABb6pw.78kgbjutgCW')
+              ON CONFLICT (email) DO NOTHING;
+      rollback:
+        - sql:
+            sql: "DELETE FROM auth.customers WHERE email = 'demo@aurora.test';"
