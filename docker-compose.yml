@@ -63,6 +63,7 @@ services:
       dockerfile: order-service/Dockerfile
     profiles: [ "full" ]
     environment:
+      PORT: 8080
       JDBC_DATABASE_URL: jdbc:postgresql://db:5432/aurora
       DB_USER: postgres
       DB_PASSWORD: dev
@@ -70,6 +71,7 @@ services:
       JWT_SECRET: local-dev-secret-change-me-32bytes!
       INTERNAL_TOKEN: local-internal-token
       PRODUCT_SERVICE_URL: http://product-service:8080
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     ports: ["8083:8080"]
     depends_on:
       db:

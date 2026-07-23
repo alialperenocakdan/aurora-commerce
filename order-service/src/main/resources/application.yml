@@ -1,5 +1,5 @@
 server:
-  port: ${PORT:8080}
+  port: ${PORT:8085}
 
 spring:
   datasource:
@@ -10,6 +10,15 @@ spring:
   data:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        # Broker'a ulaşılamıyorsa en fazla 3sn bekle, checkout'u askıda bırakma.
+        # §10.1 kuralı: Kafka kapalıyken checkout yine de başarılı olmalı.
+        max.block.ms: 3000
   cloud:
     openfeign:
       client:
@@ -39,6 +48,11 @@ product-service:
   url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
   internal-token: ${INTERNAL_TOKEN:local-internal-token}
 
+# AI Support Agent (§10.4) — opsiyonel modül, anahtar yoksa /support 502 döner
+google:
+  api-key: ${GOOGLE_API_KEY:}
+  model: ${GOOGLE_MODEL:gemini-flash-latest}
+
 resilience4j:
   circuitbreaker:
     instances:
@@ -57,3 +71,6 @@ resilience4j:
         # bir iş kuralıdır, listede olmadığı için hata olarak SAYILMAZ.
         recordExceptions:
           - com.aurora.order.exception.DownstreamUnavailableException
+kafka:
+  topics:
+    order-created: order.created

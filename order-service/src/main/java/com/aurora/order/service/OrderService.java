@@ -3,9 +3,13 @@ package com.aurora.order.service;
 import com.aurora.order.client.ProductClient;
 import com.aurora.order.domain.Order;
 import com.aurora.order.domain.OrderItem;
+import com.aurora.order.event.OrderCreatedEvent;
 import com.aurora.order.exception.DownstreamUnavailableException;
 import com.aurora.order.exception.DuplicateOrderException;
+import com.aurora.order.exception.ForbiddenException;
 import com.aurora.order.exception.InvalidRequestException;
+import com.aurora.order.exception.NotCancellableException;
+import com.aurora.order.exception.OrderNotFoundException;
 import com.aurora.order.exception.OutOfStockException;
 import com.aurora.order.repo.OrderRepository;
 import feign.FeignException;
@@ -14,6 +18,7 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,10 +42,17 @@ public class OrderService {
     @Value("${INTERNAL_TOKEN:local-internal-token}")
     private String internalToken;
 
-    public OrderService(OrderRepository orderRepository, ProductClient productClient, StringRedisTemplate redisTemplate) {
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${kafka.topics.order-created}")
+    private String orderCreatedTopic;
+
+    public OrderService(OrderRepository orderRepository, ProductClient productClient,
+                        StringRedisTemplate redisTemplate, KafkaTemplate<String, Object> kafkaTemplate) {
         this.orderRepository = orderRepository;
         this.productClient = productClient;
         this.redisTemplate = redisTemplate;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     //aynı Idempotency-Key ile daha önce oluşmuş siparişi bul
@@ -67,6 +79,16 @@ public class OrderService {
     private void safeRedisDelete(String key) {
         try { redisTemplate.delete(key); }
         catch (Exception e) { System.err.println("Redis erisilemedi (del): " + e.getMessage()); }
+    }
+
+    // Kafka publish'i best-effort yapar: broker'a ulaşılamasa bile checkout'u ASLA düşürmez/geri aldırmaz.
+    private void safeKafkaSend(Order order) {
+        try {
+            kafkaTemplate.send(orderCreatedTopic, order.getId().toString(),
+                    new OrderCreatedEvent(order.getId(), order.getCustomerId(), order.getTotal(), order.getCreatedAt()));
+        } catch (Exception e) {
+            System.err.println("Kafka'ya event gonderilemedi (checkout etkilenmedi): " + e.getMessage());
+        }
     }
 
     @Transactional
@@ -158,6 +180,7 @@ public class OrderService {
 
             // İçi dolan siparişi son haliyle tekrar kaydet
             Order saved = orderRepository.save(order);
+            safeKafkaSend(saved);
 
             // İdempotency anahtarını Redis'te siparişe bağla: replay artık DB'ye inmeden cevaplanır
             if (idempotencyKey != null) {
@@ -189,5 +212,34 @@ public class OrderService {
     public Order checkoutFallback(Long customerId, List<Map<String, Object>> requestLines, String idempotencyKey, CallNotPermittedException ex) {
         System.err.println("CIRCUIT BREAKER AKTİF! product-service erişilemez durumda: " + ex.getMessage());
         throw new DownstreamUnavailableException("circuit_open");
+    }
+
+    // Saga'nın tersi: sadece 'pending' siparişi iptal eder, stoğu restore ile geri yükler.
+    // Replay güvenliği state'ten gelir — zaten 'cancelled' bulunan sipariş aynı cevabı döner,
+    // stoğa ikinci kez dokunulmaz.
+    @Transactional
+    public Order cancel(Long orderId, Long customerId) {
+        Order order = orderRepository.findById(orderId).orElseThrow(OrderNotFoundException::new);
+
+        if (!order.getCustomerId().equals(customerId)) {
+            throw new ForbiddenException();
+        }
+        if ("cancelled".equals(order.getStatus())) {
+            return order; // idempotent replay: ikinci kez restock etmeden aynı cevabı dön
+        }
+        if (!"pending".equals(order.getStatus())) {
+            throw new NotCancellableException();
+        }
+
+        List<Map<String, Object>> lines = order.getItems().stream()
+                .map(item -> Map.<String, Object>of("productId", item.getProductId(), "quantity", item.getQuantity()))
+                .toList();
+
+        order.setStatus("cancelled");
+        Order saved = orderRepository.save(order);
+        // restore başarısız olursa exception yukarı fırlar, @Transactional status'u geri alır —
+        // sipariş 'pending' kalır ve müşteri güvenle tekrar deneyebilir.
+        productClient.restore(internalToken, Map.of("lines", lines));
+        return saved;
     }
 }
