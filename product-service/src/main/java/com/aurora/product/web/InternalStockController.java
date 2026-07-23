@@ -1,6 +1,8 @@
 package com.aurora.product.web;
 
 import com.aurora.product.service.StockService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +14,8 @@ import java.util.Map;
 @RequestMapping("/internal/stock")
 public class InternalStockController {
 
+    private static final Logger log = LoggerFactory.getLogger(InternalStockController.class);
+
     private final StockService stockService;
 
     // application.yml'den gelen veya varsayılan olan gizli şifre
@@ -22,53 +26,44 @@ public class InternalStockController {
     }
 
     // Stok düş
-    // Stok düş
     @PostMapping("/deduct")
     public ResponseEntity<?> deduct(@RequestHeader("X-Internal-Token") String token,
                                     @RequestBody Map<String, List<Map<String, Object>>> request) {
 
-        // DEĞİŞKEN İSİMLERİ DÜZELTİLDİ
-        System.out.println(" Order Servisinden Gelen Mühür: " + token);
-        System.out.println(" Product Servisinin Beklediği Mühür: " + internalToken);
-
         if (!internalToken.equals(token)) {
+            log.warn("Deduct isteği reddedildi: gecersiz X-Internal-Token");
             return ResponseEntity.status(403).build(); // Yanlış şifreyse kov!
         }
 
+        log.info("Stok düşme isteği alındı: lines={}", request.get("lines"));
         try {
             List<Map<String, Object>> result = stockService.deduct(request.get("lines"));
+            log.info("Stok düşme başarılı: result={}", result);
             return ResponseEntity.ok(Map.of("lines", result));
         } catch (RuntimeException e) {
+            log.warn("Stok yetersiz: lines={}", request.get("lines"));
             return ResponseEntity.status(409).body(Map.of("error", "out_of_stock"));
         }
     }
+
     // Stok iade (Saga Telafisi)
     @PostMapping("/restore")
     public ResponseEntity<?> restore(@RequestHeader("X-Internal-Token") String token,
                                      @RequestBody Map<String, List<Map<String, Object>>> request) {
 
-        System.out.println("İade (Restore) Çağrısı Alındı!");
-
-        // 1. Güvenlik Kontrolü: İstek gerçekten bizim order-service'ten mi geliyor?
         if (!internalToken.equals(token)) {
+            log.warn("Restore isteği reddedildi: gecersiz X-Internal-Token");
             return ResponseEntity.status(403).build();
         }
 
+        log.info("Stok iade isteği alındı: lines={}", request.get("lines"));
         try {
-            // 2. İade işlemini servise devret
             stockService.restore(request.get("lines"));
-            System.out.println(" Stoklar başarıyla iade edildi.");
+            log.info("Stok başarıyla iade edildi: lines={}", request.get("lines"));
             return ResponseEntity.ok(Map.of("restored", true));
         } catch (Exception e) {
-            System.out.println(" İade işlemi sırasında hata: " + e.getMessage());
+            log.error("Stok iade işlemi sırasında hata: {}", e.getMessage(), e);
             return ResponseEntity.status(500).build();
         }
     }
-
-
-
-
-
-
-
 }

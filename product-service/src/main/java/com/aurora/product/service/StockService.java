@@ -1,6 +1,8 @@
 package com.aurora.product.service;
 
 import com.aurora.product.repo.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,6 +12,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class StockService {
+
+    private static final Logger log = LoggerFactory.getLogger(StockService.class);
 
     private final ProductRepository repository;
 
@@ -28,8 +32,10 @@ public class StockService {
 
             if (unitPrice == null) {
                 // Eğer SQL 'null' döndüyse ürün yoktur veya stok yetmemiştir!
+                log.warn("Stok guard reddetti: productId={}, quantity={}", productId, quantity);
                 throw new RuntimeException("out_of_stock");
             }
+            log.info("Stok düşüldü: productId={}, quantity={}, unitPrice={}", productId, quantity, unitPrice);
 
 
             return Map.<String, Object>of(
@@ -46,6 +52,7 @@ public class StockService {
             Long productId = ((Number) line.get("productId")).longValue();
             Integer quantity = ((Number) line.get("quantity")).intValue();
             repository.restoreStock(productId, quantity);
+            log.info("Stok iade edildi: productId={}, quantity={}", productId, quantity);
         }
     }
 }

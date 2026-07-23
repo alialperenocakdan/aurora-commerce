@@ -15,6 +15,8 @@ import com.aurora.order.repo.OrderRepository;
 import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -32,6 +34,8 @@ import java.util.Map;
 
 @Service
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
     private final ProductClient productClient;
@@ -63,22 +67,22 @@ public class OrderService {
 
     private String safeRedisGet(String key) {
         try { return redisTemplate.opsForValue().get(key); }
-        catch (Exception e) { System.err.println("Redis erisilemedi (get), DB garantisiyle devam: " + e.getMessage()); return null; }
+        catch (Exception e) { log.warn("Redis erisilemedi (get), DB garantisiyle devam: {}", e.getMessage()); return null; }
     }
 
     private void safeRedisSet(String key, String value) {
         try { redisTemplate.opsForValue().set(key, value, Duration.ofHours(24)); }
-        catch (Exception e) { System.err.println("Redis erisilemedi (set): " + e.getMessage()); }
+        catch (Exception e) { log.warn("Redis erisilemedi (set): {}", e.getMessage()); }
     }
 
     private void safeRedisSetIfAbsent(String key, String value) {
         try { redisTemplate.opsForValue().setIfAbsent(key, value, Duration.ofHours(24)); }
-        catch (Exception e) { System.err.println("Redis erisilemedi (setnx): " + e.getMessage()); }
+        catch (Exception e) { log.warn("Redis erisilemedi (setnx): {}", e.getMessage()); }
     }
 
     private void safeRedisDelete(String key) {
         try { redisTemplate.delete(key); }
-        catch (Exception e) { System.err.println("Redis erisilemedi (del): " + e.getMessage()); }
+        catch (Exception e) { log.warn("Redis erisilemedi (del): {}", e.getMessage()); }
     }
 
     // Kafka publish'i best-effort yapar: broker'a ulaşılamasa bile checkout'u ASLA düşürmez/geri aldırmaz.
@@ -87,7 +91,7 @@ public class OrderService {
             kafkaTemplate.send(orderCreatedTopic, order.getId().toString(),
                     new OrderCreatedEvent(order.getId(), order.getCustomerId(), order.getTotal(), order.getCreatedAt()));
         } catch (Exception e) {
-            System.err.println("Kafka'ya event gonderilemedi (checkout etkilenmedi): " + e.getMessage());
+            log.warn("Kafka'ya event gonderilemedi (checkout etkilenmedi): {}", e.getMessage());
         }
     }
 
@@ -95,6 +99,8 @@ public class OrderService {
     @CircuitBreaker(name = "productService", fallbackMethod = "checkoutFallback")
     public Order checkout(Long customerId, List<Map<String, Object>> requestLines, String idempotencyKey) {
 
+        log.info("Checkout başladı: customerId={}, idempotencyKey={}, lineCount={}",
+                customerId, idempotencyKey, requestLines == null ? 0 : requestLines.size());
 
         if (requestLines == null || requestLines.isEmpty()) {
             throw new InvalidRequestException();
@@ -113,11 +119,17 @@ public class OrderService {
             String cached = safeRedisGet(IDEM_PREFIX + idempotencyKey);
             if (cached != null && !"PENDING".equals(cached)) {
                 Order existing = orderRepository.findById(Long.parseLong(cached)).orElse(null);
-                if (existing != null) return existing;
+                if (existing != null) {
+                    log.info("Idempotency replay (Redis): key={}, orderId={}", idempotencyKey, existing.getId());
+                    return existing;
+                }
             }
             // Asıl garanti: DB'deki unique index'li kolon
             Optional<Order> existing = orderRepository.findByIdempotencyKey(idempotencyKey);
-            if (existing.isPresent()) return existing.get();
+            if (existing.isPresent()) {
+                log.info("Idempotency replay (DB): key={}, orderId={}", idempotencyKey, existing.get().getId());
+                return existing.get();
+            }
 
             // Ön kapı: anahtarı PENDING olarak rezerve et (24 saat)
             safeRedisSetIfAbsent(IDEM_PREFIX + idempotencyKey, "PENDING");
@@ -136,18 +148,20 @@ public class OrderService {
         aggregatedLines.forEach((pId, qty) -> deductRequest.add(Map.of("productId", pId, "quantity", qty)));
 
         //STOKLARI DÜŞ VE FİYATLARI AL
+        log.info("Stok düşme isteği gönderiliyor: lines={}", deductRequest);
         Map<String, Object> deductResponse; // Dönüş tipini Map yaptık
         try {
             // Feign Client üzerinden Ürün Servisine istek atıyoruz
             deductResponse = productClient.deduct(internalToken, Map.of("lines", deductRequest));
         } catch (FeignException.Conflict e) {
+            log.warn("Stok yetersiz: lines={}", deductRequest);
             throw new OutOfStockException();
         } catch (Exception e) {
-            System.err.println(" FEIGN İLETİŞİM HATASI: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Feign iletişim hatası (product-service): {}", e.getMessage(), e);
             throw new DownstreamUnavailableException("product_service_unreachable");
         }
         List<Map<String, Object>> pricedLines = (List<Map<String, Object>>) deductResponse.get("lines");
+        log.info("Stok düşme başarılı: pricedLines={}", pricedLines);
 
         //İKİ AŞAMALI KAYIT (TWO-STEP SAVE)
         try {
@@ -180,6 +194,7 @@ public class OrderService {
 
             // İçi dolan siparişi son haliyle tekrar kaydet
             Order saved = orderRepository.save(order);
+            log.info("Sipariş kaydedildi: orderId={}, total={}", saved.getId(), saved.getTotal());
             safeKafkaSend(saved);
 
             // İdempotency anahtarını Redis'te siparişe bağla: replay artık DB'ye inmeden cevaplanır
@@ -191,6 +206,8 @@ public class OrderService {
         } catch (DataIntegrityViolationException e) {
             // Aynı Idempotency-Key ile eşzamanlı ikinci istek: unique index yakaladı.
             // Bu isteğin düşürdüğü stok iade edilir; orijinal sipariş controller'da bulunup 200 dönülür.
+            log.warn("Idempotency çakışması (eşzamanlı retry), stok iade ediliyor: key={}, lines={}",
+                    idempotencyKey, deductRequest);
             productClient.restore(internalToken, Map.of("lines", deductRequest));
             if (idempotencyKey != null) {
                 throw new DuplicateOrderException(idempotencyKey);
@@ -198,6 +215,8 @@ public class OrderService {
             throw new RuntimeException("order_failed_stock_restored", e);
         } catch (Exception e) {
             // SAGA TELAFİSİ
+            log.warn("Sipariş kaydı başarısız, stok iade ediliyor (saga telafisi): lines={}, hata={}",
+                    deductRequest, e.getMessage(), e);
             productClient.restore(internalToken, Map.of("lines", deductRequest));
             // Anahtar PENDING'de kalmasın ki müşteri güvenle retry edebilsin
             if (idempotencyKey != null) {
@@ -210,7 +229,7 @@ public class OrderService {
 
     // out_of_stock gibi iş kuralı hataları buraya uğramadan olduğu gibi yukarı fırlar.
     public Order checkoutFallback(Long customerId, List<Map<String, Object>> requestLines, String idempotencyKey, CallNotPermittedException ex) {
-        System.err.println("CIRCUIT BREAKER AKTİF! product-service erişilemez durumda: " + ex.getMessage());
+        log.warn("Circuit breaker AÇIK! product-service erişilemez durumda: {}", ex.getMessage());
         throw new DownstreamUnavailableException("circuit_open");
     }
 
@@ -219,12 +238,14 @@ public class OrderService {
     // stoğa ikinci kez dokunulmaz.
     @Transactional
     public Order cancel(Long orderId, Long customerId) {
+        log.info("İptal isteği: orderId={}, customerId={}", orderId, customerId);
         Order order = orderRepository.findById(orderId).orElseThrow(OrderNotFoundException::new);
 
         if (!order.getCustomerId().equals(customerId)) {
             throw new ForbiddenException();
         }
         if ("cancelled".equals(order.getStatus())) {
+            log.info("İptal replay: orderId={} zaten cancelled, tekrar restock edilmedi", orderId);
             return order; // idempotent replay: ikinci kez restock etmeden aynı cevabı dön
         }
         if (!"pending".equals(order.getStatus())) {
@@ -237,6 +258,7 @@ public class OrderService {
 
         order.setStatus("cancelled");
         Order saved = orderRepository.save(order);
+        log.info("Sipariş iptal edildi, stok iade isteği gönderiliyor: orderId={}, lines={}", orderId, lines);
         // restore başarısız olursa exception yukarı fırlar, @Transactional status'u geri alır —
         // sipariş 'pending' kalır ve müşteri güvenle tekrar deneyebilir.
         productClient.restore(internalToken, Map.of("lines", lines));

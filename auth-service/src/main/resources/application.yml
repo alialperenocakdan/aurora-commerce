@@ -22,3 +22,9 @@ spring:
     liquibase-schema: auth
 jwt:
   secret: aurora-super-secret-key-must-be-32-bytes-long!
+
+# §10.5: yapılandırılmış (ECS) console log çıktısı — MDC'deki traceId otomatik dahil olur
+logging:
+  structured:
+    format:
+      console: ecs

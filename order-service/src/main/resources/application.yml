@@ -74,3 +74,9 @@ resilience4j:
 kafka:
   topics:
     order-created: order.created
+
+# §10.5: yapılandırılmış (ECS) console log çıktısı — MDC'deki traceId otomatik dahil olur
+logging:
+  structured:
+    format:
+      console: ecs
