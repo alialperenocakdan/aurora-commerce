@@ -18,7 +18,7 @@ databaseChangeLog:
               UPDATE product.products SET image_url = 'https://images.pexels.com/photos/18186106/pexels-photo-18186106.jpeg?auto=compress&cs=tinysrgb&w=800' WHERE name = 'Aurora Tee';
               UPDATE product.products SET image_url = 'https://images.pexels.com/photos/6551795/pexels-photo-6551795.jpeg?auto=compress&cs=tinysrgb&w=800' WHERE name = 'Aurora Sticker Pack';
               UPDATE product.products SET image_url = 'https://images.pexels.com/photos/4324320/pexels-photo-4324320.jpeg?auto=compress&cs=tinysrgb&w=800' WHERE name = 'Tam Yağlı Süt 1L';
-              UPDATE product.products SET image_url = 'https://images.pexels.com/photos/4397824/pexels-photo-4397824.jpeg?auto=compress&cs=tinysrgb&w=800' WHERE name = 'Le Cola';
+              UPDATE product.products SET image_url = 'https://images.pexels.com/photos/4397824/pexels-photo-29051732.jpeg?auto=compress&cs=tinysrgb&w=800' WHERE name = 'Le Cola';
       rollback:
         - dropColumn:
             tableName: products
