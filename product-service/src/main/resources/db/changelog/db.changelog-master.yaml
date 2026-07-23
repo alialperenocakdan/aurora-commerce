@@ -1,3 +1,4 @@
 databaseChangeLog:
   - include: { file: changes/001-create-products.yaml, relativeToChangelogFile: true }
   - include: { file: changes/002-seed-products.yaml, relativeToChangelogFile: true }
+  - include: { file: changes/003-add-image-url.yaml, relativeToChangelogFile: true }

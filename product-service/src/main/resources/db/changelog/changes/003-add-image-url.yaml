@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-image-url
+      author: aurora
+      changes:
+        - addColumn:
+            tableName: products
+            schemaName: product
+            columns:
+              - column:
+                  name: image_url
+                  type: TEXT
+        # Mevcut seed ürünlerine (ve elle eklenmiş demo ürünlere) ücretsiz stok
+        # görselleri ata — isim eşleşmesi idempotenttir, tekrar çalıştırma zararsızdır.
+        - sql:
+            sql: |
+              UPDATE product.products SET image_url = 'https://images.pexels.com/photos/296287/pexels-photo-296287.jpeg?auto=compress&cs=tinysrgb&w=800' WHERE name = 'Aurora Mug';
+              UPDATE product.products SET image_url = 'https://images.pexels.com/photos/18186106/pexels-photo-18186106.jpeg?auto=compress&cs=tinysrgb&w=800' WHERE name = 'Aurora Tee';
+              UPDATE product.products SET image_url = 'https://images.pexels.com/photos/6551795/pexels-photo-6551795.jpeg?auto=compress&cs=tinysrgb&w=800' WHERE name = 'Aurora Sticker Pack';
+              UPDATE product.products SET image_url = 'https://images.pexels.com/photos/4324320/pexels-photo-4324320.jpeg?auto=compress&cs=tinysrgb&w=800' WHERE name = 'Tam Yağlı Süt 1L';
+              UPDATE product.products SET image_url = 'https://images.pexels.com/photos/4397824/pexels-photo-4397824.jpeg?auto=compress&cs=tinysrgb&w=800' WHERE name = 'Le Cola';
+      rollback:
+        - dropColumn:
+            tableName: products
+            schemaName: product
+            columnName: image_url
