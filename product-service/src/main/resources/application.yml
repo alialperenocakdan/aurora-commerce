@@ -10,6 +10,12 @@ spring:
   data:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
+      # Redis'e ulaşılamazsa (ör. farklı bölgedeki servis) hızlı vazgeç — cache
+      # isteği hiçbir zaman uzun süre askıda bırakmasın, CacheErrorHandler devreye girsin.
+      connect-timeout: 2000
+      timeout: 2000
+      lettuce:
+        shutdown-timeout: 100
   jpa:
     hibernate:
       ddl-auto: validate
