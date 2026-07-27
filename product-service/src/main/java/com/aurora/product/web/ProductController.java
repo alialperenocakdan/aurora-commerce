@@ -3,6 +3,8 @@ package com.aurora.product.web;
 
 import com.aurora.product.domain.Product;
 import com.aurora.product.repo.ProductRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,12 +24,16 @@ public class ProductController {
         this.productRepository = productRepository;
     }
 
-
+    // Cache-aside: cevap 60sn Redis'te tutulur (bkz. CacheConfig). Fiyat/stok kararları
+    // asla buradan okunmaz — checkout hep deduct'ın RETURNING'inden gerçek veriyi alır.
+    @Cacheable(value = "products", key = "'all'")
     @GetMapping("/products")
     public List<Product> getAllProducts() {
         return productRepository.findAll();
     }
+
     // Tek ürün görüntüleme — sepet servisi (order-service) ürün doğrulaması için bunu çağırır
+    @Cacheable(value = "products", key = "#id", unless = "#result.statusCode.value() == 404")
     @GetMapping("/products/{id}")
     public ResponseEntity<?> getProduct(@PathVariable Long id) {
         return productRepository.findById(id)
@@ -35,7 +41,8 @@ public class ProductController {
                 .orElse(ResponseEntity.status(404).body(Map.of("error", "not_found")));
     }
 
-    // Ürün ekleme metodu (POST)
+    // Ürün ekleme metodu (POST) — yeni/güncellenmiş ürün cache'i bayatlatır, tamamen boşaltılır.
+    @CacheEvict(value = "products", allEntries = true)
     @PostMapping("/products")
     public Product createProduct(@RequestBody Product product) {
         // Gelen JSON verisini Product entity'sine dönüştürüp veritabanına kaydeder

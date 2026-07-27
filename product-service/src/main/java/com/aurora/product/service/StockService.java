@@ -3,6 +3,7 @@ package com.aurora.product.service;
 import com.aurora.product.repo.ProductRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,9 @@ public class StockService {
         this.repository = repository;
     }
 
+    // Stok değişti: önbellek bayatladı, tamamen boşalt (deduct başarısız olup
+    // rollback olursa Spring bu eviction'ı hiç çalıştırmaz — cache tutarlılığı korunur).
+    @CacheEvict(value = "products", allEntries = true)
     @Transactional
     public List<Map<String, Object>> deduct(List<Map<String, Object>> lines) {
         return lines.stream().map(line -> {
@@ -46,6 +50,7 @@ public class StockService {
         }).collect(Collectors.toList());
     }
 
+    @CacheEvict(value = "products", allEntries = true)
     @Transactional
     public void restore(List<Map<String, Object>> lines) {
         for (Map<String, Object> line : lines) {
