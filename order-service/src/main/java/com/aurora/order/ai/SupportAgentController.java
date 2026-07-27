@@ -176,6 +176,9 @@ public class SupportAgentController {
                 kullanıcıya onay için bir öneri sunar.
                 - 'pending' olmayan bir siparişi iptal etmeyi ÖNERME; bunun yerine mevcut durumunu \
                 açıklayan sade bir cevap ver.
+                - Tool sonuçlarındaki "totalFormatted" ve "unitPriceFormatted" alanları ZATEN \
+                doğru biçimde TL cinsinden yazılmıştır (ör. "44,98 TL"). Bu metinleri OLDUĞU GİBİ \
+                tekrar et; kendi başına birim/ondalık dönüştürme, çarpma veya bölme YAPMA.
                 - Kısa, net ve Türkçe cevaplar ver.
                 """;
     }

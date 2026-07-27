@@ -38,7 +38,9 @@ public class SupportToolsService {
                 "found", true,
                 "orderId", order.getId(),
                 "status", order.getStatus(),
-                "total", order.getTotal(),
+                // Gemini'ye ham kuruş değeri DEĞİL, hazır formatlanmış TL metni gönderilir —
+                // dönüşümü modele bırakırsak (44,98 TL -> "4.498 TL" gibi) hatalı yorumlayabiliyor.
+                "totalFormatted", formatTl(order.getTotal()),
                 "items", items
         );
     }
@@ -81,7 +83,16 @@ public class SupportToolsService {
         return Map.of(
                 "productId", item.getProductId(),
                 "quantity", item.getQuantity(),
-                "unitPrice", item.getUnitPrice()
+                // Aynı sebep: kuruş cinsinden ham fiyat değil, hazır TL metni gönderilir.
+                "unitPriceFormatted", formatTl(item.getUnitPrice())
         );
+    }
+
+    // Kuruş cinsinden ham değeri "44,98 TL" gibi doğrudan gösterilebilir bir metne çevirir.
+    // Gemini'ye asla ham kuruş sayısı gönderilmez — dönüşüm modele bırakılmaz.
+    private String formatTl(long kurus) {
+        long lira = kurus / 100;
+        long kurusPart = Math.abs(kurus % 100);
+        return String.format("%d,%02d TL", lira, kurusPart);
     }
 }
