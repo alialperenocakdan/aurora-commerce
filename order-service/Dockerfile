@@ -17,11 +17,14 @@ RUN mvn -q -pl order-service -am package -DskipTests
 
 # 2. Aşama: Çalıştırma (Run) Katmanı (Sadece JRE içerir, çok daha hafiftir)
 FROM eclipse-temurin:17-jre-alpine
-# Konteyneri root olarak çalıştırmamak temel bir sertleştirme adımıdır:
-# uygulamada bir açık bulunsa bile saldırgan konteyner içinde root olamaz.
-RUN addgroup -S aurora && adduser -S aurora -G aurora
-USER aurora
 WORKDIR /app
 COPY --from=build /app/order-service/target/*.jar app.jar
+
+# Konteyneri root olarak çalıştırmamak temel bir sertleştirme adımıdır:
+# uygulamada bir açık bulunsa bile saldırgan konteyner içinde root olamaz.
+# USER, WORKDIR/COPY'den SONRA gelmeli — önce gelirse /app dizinini
+# oluşturma/yazma izni olmayan bir kullanıcıyla denenir ve build/çalıştırma patlar.
+RUN addgroup -S aurora && adduser -S aurora -G aurora && chown -R aurora:aurora /app
+USER aurora
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","app.jar"]
