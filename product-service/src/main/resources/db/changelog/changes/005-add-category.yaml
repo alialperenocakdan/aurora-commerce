@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-add-category
+      author: aurora
+      changes:
+        - addColumn:
+            tableName: products
+            schemaName: product
+            columns:
+              - column:
+                  name: category
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: products
+            schemaName: product
+            columnName: category

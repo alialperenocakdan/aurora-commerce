@@ -23,6 +23,11 @@ public class Product implements Serializable {
     @Column(name = "image_url")
     private String imageUrl;
 
+    // Serbest metin — "Süt Ürünleri", "İçecek" vb. Katalog filtrelemesi için;
+    // boş bırakılabilir (nullable), zorunlu değil.
+    @Column(name = "category")
+    private String category;
+
     // --- Getter ve Setter Metodları ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -38,4 +43,7 @@ public class Product implements Serializable {
 
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 }

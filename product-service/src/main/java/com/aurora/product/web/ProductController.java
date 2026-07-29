@@ -60,4 +60,20 @@ public class ProductController {
         productRepository.deleteById(id);
         return ResponseEntity.ok(Map.of("deleted", id));
     }
+
+    // Var olan ürünü güncelleme (ör. kategori atama) — POST yalnızca YENİ ürün
+    // yaratır ve isim benzersizlik kısıtına takılır; mevcut kaydı değiştirmek
+    // için bu gerekiyordu.
+    @CacheEvict(value = "products", allEntries = true)
+    @org.springframework.web.bind.annotation.PutMapping("/products/{id}")
+    public ResponseEntity<?> updateProduct(@PathVariable Long id, @RequestBody Product patch) {
+        return productRepository.findById(id).<ResponseEntity<?>>map(existing -> {
+            if (patch.getName() != null) existing.setName(patch.getName());
+            if (patch.getUnitPrice() != null) existing.setUnitPrice(patch.getUnitPrice());
+            if (patch.getStock() != null) existing.setStock(patch.getStock());
+            if (patch.getImageUrl() != null) existing.setImageUrl(patch.getImageUrl());
+            if (patch.getCategory() != null) existing.setCategory(patch.getCategory());
+            return ResponseEntity.ok(productRepository.save(existing));
+        }).orElse(ResponseEntity.status(404).body(Map.of("error", "not_found")));
+    }
 }
