@@ -19,7 +19,7 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     default-schema: auth
-    liquibase-schema: auth
+    liquibase-schema: public
 jwt:
   secret: aurora-super-secret-key-must-be-32-bytes-long!
 
