@@ -40,8 +40,10 @@ spring:
     liquibase-schema: public
 
 
+# Üretimde JWT_SECRET ortam değişkeni MUTLAKA set edilmeli (Render → Environment).
+# Buradaki değer yalnızca yerel geliştirme içindir ve repo'da herkese açıktır.
 jwt:
-  secret: aurora-super-secret-key-must-be-32-bytes-long!
+  secret: ${JWT_SECRET:aurora-super-secret-key-must-be-32-bytes-long!}
 
 # Ürün servisine ve gizli kapısına ulaşmak için adres ve şifre
 product-service:

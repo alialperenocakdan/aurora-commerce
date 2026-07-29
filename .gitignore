@@ -41,3 +41,5 @@ build/
 ### Secrets ###
 .env
 .env.*
+### IDE (tamamı) ###
+.idea/

@@ -1,0 +1,25 @@
+# Sürekli entegrasyon: her push/PR'da üç servis derlenir ve testler koşar.
+# Render'a deploy'dan ÖNCE kırmızı/yeşil sinyali burada görürsün.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Derle ve test et
+        run: mvn -B verify

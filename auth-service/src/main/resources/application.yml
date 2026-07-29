@@ -20,8 +20,10 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     default-schema: auth
     liquibase-schema: public
+# Üretimde JWT_SECRET ortam değişkeni MUTLAKA set edilmeli (Render → Environment).
+# Buradaki değer yalnızca yerel geliştirme içindir ve repo'da herkese açıktır.
 jwt:
-  secret: aurora-super-secret-key-must-be-32-bytes-long!
+  secret: ${JWT_SECRET:aurora-super-secret-key-must-be-32-bytes-long!}
 
 # §10.5: yapılandırılmış (ECS) console log çıktısı — MDC'deki traceId otomatik dahil olur
 logging:

@@ -25,12 +25,20 @@ public class InternalStockController {
         this.stockService = stockService;
     }
 
+    // Sabit zamanlı karşılaştırma: String.equals ilk farklı karakterde durur,
+    // bu da deneme-yanılmayla token'ı karakter karakter tahmin etmeye kapı açar.
+    private boolean tokenValid(String candidate) {
+        return candidate != null && java.security.MessageDigest.isEqual(
+                internalToken.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                candidate.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     // Stok düş
     @PostMapping("/deduct")
     public ResponseEntity<?> deduct(@RequestHeader("X-Internal-Token") String token,
                                     @RequestBody Map<String, List<Map<String, Object>>> request) {
 
-        if (!internalToken.equals(token)) {
+        if (!tokenValid(token)) {
             log.warn("Deduct isteği reddedildi: gecersiz X-Internal-Token");
             return ResponseEntity.status(403).build(); // Yanlış şifreyse kov!
         }
@@ -51,7 +59,7 @@ public class InternalStockController {
     public ResponseEntity<?> restore(@RequestHeader("X-Internal-Token") String token,
                                      @RequestBody Map<String, List<Map<String, Object>>> request) {
 
-        if (!internalToken.equals(token)) {
+        if (!tokenValid(token)) {
             log.warn("Restore isteği reddedildi: gecersiz X-Internal-Token");
             return ResponseEntity.status(403).build();
         }

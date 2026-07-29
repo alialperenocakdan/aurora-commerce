@@ -24,6 +24,12 @@ public class JwtService {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
+    // Login cevabındaki expiresIn alanı token'ın gerçek ömrünü yansıtsın diye
+    // sabit 3600 yerine buradan okunur.
+    public long getExpirationSeconds() {
+        return expirationTime / 1000;
+    }
+
     // Müşteri ID'si ve mailini alıp kriptolu bir Token (bilet) üretiyoruz
     public String generateToken(Long customerId, String email) {
         return Jwts.builder()

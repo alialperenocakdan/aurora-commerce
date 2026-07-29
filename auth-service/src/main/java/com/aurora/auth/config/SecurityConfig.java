@@ -54,11 +54,14 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Tarayıcıdan gelecek arayüz istekleri için CORS izni
+    // Tarayıcıdan gelecek arayüz istekleri için CORS izni.
+    // Üretimde CORS_ALLOWED_ORIGINS ile gerçek origin listesine daraltın
+    // (virgülle ayrılmış, ör. "https://app.example.com,https://admin.example.com").
     @Bean
-    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
+    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource(
+            @org.springframework.beans.factory.annotation.Value("${CORS_ALLOWED_ORIGINS:*}") String allowedOrigins) {
         org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
-        config.setAllowedOrigins(java.util.List.of("*"));
+        config.setAllowedOriginPatterns(java.util.Arrays.stream(allowedOrigins.split(",")).map(String::trim).toList());
         config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(java.util.List.of("*"));
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();

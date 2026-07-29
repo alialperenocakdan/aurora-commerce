@@ -21,12 +21,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+// disabledWithoutDocker: Docker'a ulaşılamayan makinede (ör. Docker Desktop'ın
+// Testcontainers ile uyuşmadığı Windows kurulumları) test FAIL yerine SKIP edilir.
+// CI'daki Linux koşucusunda her push'ta tam olarak çalışır.
 @SpringBootTest
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class StockConcurrencyTest {
 
+    // Test çalışırken gerçek bir Postgres ayağa kalkar; @ServiceConnection sayesinde
+    // datasource ayarları otomatik bu konteynere yönlendirilir. Böylece test, yerelde
+    // compose çalışıyor mu diye bakmaksızın her makinede ve CI'da kendi kendine yeter.
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
 
-    // Test çalışırken gerçek bir Postgres ayağa kalkar!
     @Autowired
     private StockService stockService;
 

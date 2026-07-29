@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+// Hata eşlemesi GlobalExceptionHandler'da: controller yalnızca mutlu yolu bilir.
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -18,24 +19,12 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> request) {
-        try {
-            Long customerId = authService.register(request.get("email"), request.get("password"));
-            return ResponseEntity.status(201).body(Map.of("customerId", customerId));
-        } catch (RuntimeException e) {
-            if (e.getMessage().equals("email_taken")) {
-                return ResponseEntity.status(409).body(Map.of("error", "email_taken"));
-            }
-            return ResponseEntity.status(422).body(Map.of("error", "invalid_request"));
-        }
+        Long customerId = authService.register(request.get("email"), request.get("password"));
+        return ResponseEntity.status(201).body(Map.of("customerId", customerId));
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
-        try {
-            Map<String, Object> response = authService.login(request.get("email"), request.get("password"));
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body(Map.of("error", "invalid_credentials"));
-        }
+        return ResponseEntity.ok(authService.login(request.get("email"), request.get("password")));
     }
 }
