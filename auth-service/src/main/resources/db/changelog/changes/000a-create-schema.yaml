@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 000-create-schema
+      id: 000a-create-schema
       author: aurora
       changes:
         # Liquibase'in kendi izleme tablosu 'public' şemasında tutulur (application.yml'de
