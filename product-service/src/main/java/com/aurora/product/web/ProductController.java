@@ -48,4 +48,16 @@ public class ProductController {
         // Gelen JSON verisini Product entity'sine dönüştürüp veritabanına kaydeder
         return productRepository.save(product);
     }
+
+    // Ürün silme — POST gibi JWT korumalıdır (SecurityConfig'te yalnızca GET'ler herkese açık).
+    // Geçmiş siparişler etkilenmez: order_items kendi şemasında productId kopyası tutar.
+    @CacheEvict(value = "products", allEntries = true)
+    @org.springframework.web.bind.annotation.DeleteMapping("/products/{id}")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
+        if (!productRepository.existsById(id)) {
+            return ResponseEntity.status(404).body(Map.of("error", "not_found"));
+        }
+        productRepository.deleteById(id);
+        return ResponseEntity.ok(Map.of("deleted", id));
+    }
 }
