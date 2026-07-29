@@ -2,6 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: 000a-create-schema
       author: aurora
+      runOnChange: true
       changes:
         # Liquibase'in kendi izleme tablosu 'public' şemasında tutulur (application.yml'de
         # liquibase-schema: public), bu yüzden bu adım her zaman çalışabilir — 'auth' şeması
