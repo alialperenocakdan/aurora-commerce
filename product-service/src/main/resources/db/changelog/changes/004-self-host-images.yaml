@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-self-host-images
+      author: aurora
+      changes:
+        # Eski veritabanı silinirken Postman'dan elle eklenmiş bu iki ürün de gitti;
+        # burada kalıcı olsun diye seed'e taşıyoruz. Fiyat/stok geçici değer — gerekirse
+        # Postman'dan güncellenebilir.
+        - sql:
+            sql: |
+              INSERT INTO product.products (name, unit_price, stock) VALUES
+                ('Tam Yağlı Süt 1L', 2999, 40),
+                ('Le Cola', 1999, 60)
+              ON CONFLICT (name) DO NOTHING;
+        # Resimleri artık Pexels'ten değil, kendi servisimizden (static/images) çekiyoruz.
+        - sql:
+            sql: |
+              UPDATE product.products SET image_url = 'https://product-service-f155.onrender.com/images/aurora-mug.jpg' WHERE name = 'Aurora Mug';
+              UPDATE product.products SET image_url = 'https://product-service-f155.onrender.com/images/aurora-tee.jpg' WHERE name = 'Aurora Tee';
+              UPDATE product.products SET image_url = 'https://product-service-f155.onrender.com/images/aurora-sticker-pack.jpg' WHERE name = 'Aurora Sticker Pack';
+              UPDATE product.products SET image_url = 'https://product-service-f155.onrender.com/images/tam-yagli-sut-1l.jpg' WHERE name = 'Tam Yağlı Süt 1L';
+              UPDATE product.products SET image_url = 'https://product-service-f155.onrender.com/images/le-cola.jpg' WHERE name = 'Le Cola';
+      rollback:
+        - sql:
+            sql: "-- resim URL'lerini geri almak gerekmiyor, veri kaybı riski taşımaz"

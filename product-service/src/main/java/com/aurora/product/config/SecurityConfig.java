@@ -31,6 +31,9 @@ public class SecurityConfig {
                         // Müşteri vitrini herkese açık
                         .requestMatchers(HttpMethod.GET, "/products", "/products/**").permitAll()
 
+                        // Ürün resimleri (kendi sunucumuzdan barındırılıyor, static klasör) herkese açık
+                        .requestMatchers(HttpMethod.GET, "/images/**").permitAll()
+
                         // Arka kapıyı Spring Security'den muaf tutuyoruz.
                         // Çünkü şifre kontrolünü (X-Internal-Token) Controller içinde bizzat biz yapıyoruz!
                         .requestMatchers("/internal/**").permitAll()
