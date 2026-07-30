@@ -62,7 +62,7 @@ public class AuthService {
         }
 
         // Eşleşiyorsa bileti (JWT) kesip gönderiyoruz
-        String token = jwtService.generateToken(customer.getId(), customer.getEmail());
+        String token = jwtService.generateToken(customer.getId(), customer.getEmail(), customer.isAdmin());
         return Map.of("accessToken", token, "expiresIn", jwtService.getExpirationSeconds());
     }
 }

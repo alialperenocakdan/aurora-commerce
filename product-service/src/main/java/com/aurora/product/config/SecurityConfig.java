@@ -41,15 +41,29 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()
 
-                        // Diğer her şey korumalıdır (POST, PUT, DELETE vb.)
+                        // Ürün yazma işlemleri (ekleme/güncelleme/silme) SADECE admin
+                        // hesabına açık — ayrı yönetim uygulaması bunu kullanır.
+                        // Normal giriş yapmış bir müşteri (Postman'dan bile) artık bunları çağıramaz.
+                        .requestMatchers(HttpMethod.POST, "/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/products/**").hasRole("ADMIN")
+
+                        // Diğer her şey korumalıdır
                         .anyRequest().authenticated()
                 )
-                // Token'sız/geçersiz istek: whitelabel yerine sözleşmedeki 401 gövdesi
-                .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
-                    res.setStatus(401);
-                    res.setContentType("application/json");
-                    res.getWriter().write("{\"error\":\"unauthorized\"}");
-                }))
+                // Token'sız/geçersiz istek: whitelabel yerine sözleşmedeki 401 gövdesi.
+                // Giriş yapmış ama admin olmayan istek (ör. sıradan müşteri POST dener) → 403.
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((req, res, ex) -> {
+                            res.setStatus(401);
+                            res.setContentType("application/json");
+                            res.getWriter().write("{\"error\":\"unauthorized\"}");
+                        })
+                        .accessDeniedHandler((req, res, ex) -> {
+                            res.setStatus(403);
+                            res.setContentType("application/json");
+                            res.getWriter().write("{\"error\":\"forbidden\"}");
+                        }))
                 //  Token okuma gözlüğümüzü filtre zincirine ekliyoruz!
                 // Bu sayede Spring Security "authenticated" yapmadan önce bizim filtremiz token'ı çözecek.
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

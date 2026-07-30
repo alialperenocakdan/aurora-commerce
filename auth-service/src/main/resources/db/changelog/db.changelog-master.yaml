@@ -2,3 +2,4 @@ databaseChangeLog:
   - include: { file: changes/000a-create-schema.yaml, relativeToChangelogFile: true }
   - include: { file: changes/001-create-customers.yaml, relativeToChangelogFile: true }
   - include: { file: changes/002-seed-demo-customer.yaml, relativeToChangelogFile: true }
+  - include: { file: changes/003-add-is-admin.yaml, relativeToChangelogFile: true }

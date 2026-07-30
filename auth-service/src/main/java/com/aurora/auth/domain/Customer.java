@@ -20,6 +20,9 @@ public class Customer {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
+    @Column(name = "is_admin", nullable = false)
+    private boolean isAdmin = false;
+
     // --- Getter ve Setter Metodları ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -32,4 +35,7 @@ public class Customer {
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public boolean isAdmin() { return isAdmin; }
+    public void setAdmin(boolean admin) { isAdmin = admin; }
 }

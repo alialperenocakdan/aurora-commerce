@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-is-admin
+      author: aurora
+      changes:
+        - addColumn:
+            tableName: customers
+            schemaName: auth
+            columns:
+              - column:
+                  name: is_admin
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+  # runOnChange: true — bu ürün yönetim uygulamasının TEK admin hesabı; e-postayı
+  # değiştirmen gerekirse dosyayı düzenleyip tekrar deploy etmen yeterli olsun,
+  # yeni bir changeset numarası uğraşısı gerekmesin.
+  - changeSet:
+      id: 004-grant-admin-role
+      author: aurora
+      runOnChange: true
+      changes:
+        - sql:
+            sql: "UPDATE auth.customers SET is_admin = true WHERE email = 'admin@gmail.com';"
+      rollback:
+        - sql:
+            sql: "UPDATE auth.customers SET is_admin = false WHERE email = 'admin@gmail.com';"

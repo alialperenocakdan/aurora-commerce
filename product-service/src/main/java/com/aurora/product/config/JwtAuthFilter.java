@@ -15,9 +15,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -43,10 +45,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         .parseClaimsJws(token)
                         .getBody();
 
-                // Token geçerliyse, içindeki müşteri kimliğini (customerId) alıp kapıyı açıyoruz
+                // Token geçerliyse, içindeki müşteri kimliğini (customerId) alıp kapıyı açıyoruz.
+                // "admin" claim'i true ise ROLE_ADMIN yetkisi veriyoruz — ürün yönetim
+                // uygulaması bu yetki olmadan POST/PUT/DELETE /products'a giremez (bkz. SecurityConfig).
                 String customerId = claims.getSubject();
+                boolean isAdmin = Boolean.TRUE.equals(claims.get("admin", Boolean.class));
+                List<SimpleGrantedAuthority> authorities = isAdmin
+                        ? List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+                        : List.of();
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        customerId, null, new ArrayList<>()
+                        customerId, null, authorities
                 );
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 

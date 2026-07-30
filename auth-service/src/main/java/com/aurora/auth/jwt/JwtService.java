@@ -31,10 +31,13 @@ public class JwtService {
     }
 
     // Müşteri ID'si ve mailini alıp kriptolu bir Token (bilet) üretiyoruz
-    public String generateToken(Long customerId, String email) {
+    public String generateToken(Long customerId, String email, boolean isAdmin) {
         return Jwts.builder()
                 .subject(customerId.toString()) // Token'ın sahibi (sub)
                 .claim("email", email)
+                // Yönetim uygulaması sadece bu claim true olan token'larla ürün
+                // yazma uçlarına erişebilir (bkz. product-service SecurityConfig).
+                .claim("admin", isAdmin)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSigningKey()) // Kriptografik imza

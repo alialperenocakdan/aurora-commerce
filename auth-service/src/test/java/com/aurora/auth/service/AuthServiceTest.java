@@ -111,12 +111,29 @@ class AuthServiceTest {
         c.setPasswordHash("$2a$hash");
         when(repository.findByEmail("a@b.com")).thenReturn(Optional.of(c));
         when(encoder.matches("password123", "$2a$hash")).thenReturn(true);
-        when(jwtService.generateToken(7L, "a@b.com")).thenReturn("jwt-token");
+        when(jwtService.generateToken(7L, "a@b.com", false)).thenReturn("jwt-token");
         when(jwtService.getExpirationSeconds()).thenReturn(3600L);
 
         Map<String, Object> result = service.login("a@b.com", "password123");
 
         assertEquals("jwt-token", result.get("accessToken"));
         assertEquals(3600L, result.get("expiresIn"));
+    }
+
+    @Test
+    void login_adminHesap_isAdminTrueOlarakTokenaGecer() {
+        Customer c = new Customer();
+        c.setId(1L);
+        c.setEmail("admin@gmail.com");
+        c.setPasswordHash("$2a$hash");
+        c.setAdmin(true);
+        when(repository.findByEmail("admin@gmail.com")).thenReturn(Optional.of(c));
+        when(encoder.matches("password123", "$2a$hash")).thenReturn(true);
+        when(jwtService.generateToken(1L, "admin@gmail.com", true)).thenReturn("admin-jwt");
+        when(jwtService.getExpirationSeconds()).thenReturn(3600L);
+
+        Map<String, Object> result = service.login("admin@gmail.com", "password123");
+
+        assertEquals("admin-jwt", result.get("accessToken"));
     }
 }
