@@ -28,6 +28,11 @@ public class Product implements Serializable {
     @Column(name = "category")
     private String category;
 
+    // İndirimsiz fiyat (kuruş). NULL ise ürün indirimde değil; unitPrice'tan
+    // büyükse indirimdedir ve vitrinde üstü çizili olarak gösterilir.
+    @Column(name = "old_price")
+    private Long oldPrice;
+
     // --- Getter ve Setter Metodları ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -46,4 +51,7 @@ public class Product implements Serializable {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public Long getOldPrice() { return oldPrice; }
+    public void setOldPrice(Long oldPrice) { this.oldPrice = oldPrice; }
 }

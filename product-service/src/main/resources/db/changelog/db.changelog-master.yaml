@@ -5,3 +5,4 @@ databaseChangeLog:
   - include: { file: changes/003-add-image-url.yaml, relativeToChangelogFile: true }
   - include: { file: changes/004-self-host-images.yaml, relativeToChangelogFile: true }
   - include: { file: changes/005-add-category.yaml, relativeToChangelogFile: true }
+  - include: { file: changes/006-add-old-price.yaml, relativeToChangelogFile: true }

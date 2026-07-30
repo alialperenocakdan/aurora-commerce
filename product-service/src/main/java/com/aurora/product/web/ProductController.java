@@ -73,6 +73,11 @@ public class ProductController {
             if (patch.getStock() != null) existing.setStock(patch.getStock());
             if (patch.getImageUrl() != null) existing.setImageUrl(patch.getImageUrl());
             if (patch.getCategory() != null) existing.setCategory(patch.getCategory());
+            // oldPrice: 0 göndermek "indirimi kaldır" demektir. Alan hiç
+            // gönderilmezse (null) mevcut indirim korunur — diğer alanlarla aynı mantık.
+            if (patch.getOldPrice() != null) {
+                existing.setOldPrice(patch.getOldPrice() == 0 ? null : patch.getOldPrice());
+            }
             return ResponseEntity.ok(productRepository.save(existing));
         }).orElse(ResponseEntity.status(404).body(Map.of("error", "not_found")));
     }

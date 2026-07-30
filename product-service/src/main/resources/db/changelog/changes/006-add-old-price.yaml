@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-add-old-price
+      author: aurora
+      changes:
+        # İndirimsiz (üstü çizili gösterilecek) fiyat, kuruş cinsinden.
+        # NULL ise ürün indirimde değildir. İndirim durumu ayrı bir bayrakla
+        # değil bu alanla temsil edilir: old_price > unit_price ise indirim var.
+        - addColumn:
+            tableName: products
+            schemaName: product
+            columns:
+              - column:
+                  name: old_price
+                  type: BIGINT
+      rollback:
+        - dropColumn:
+            tableName: products
+            schemaName: product
+            columnName: old_price
