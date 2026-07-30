@@ -1,6 +1,7 @@
 package com.aurora.order.service;
 
 import com.aurora.order.client.ProductClient;
+import com.aurora.order.exception.DownstreamUnavailableException;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -29,11 +30,14 @@ public class CartService {
         if (quantity <= 0) throw new IllegalArgumentException("invalid_request");
 
         // Ürün gerçekten var mı diye Ürün Servisine soruyoruz
-        Map<String, Object> product = null;
         try {
-            product = productClient.getProduct(productId);
+            productClient.getProduct(productId);
         } catch (feign.FeignException.NotFound e) {
             throw new RuntimeException("not_found"); // Feign 404 verirse sepet hata fırlatır
+        } catch (Exception e) {
+            // Ürün servisi uykuda/erişilemez durumda: bu müşterinin hatası DEĞİL.
+            // 422 "geçersiz istek" demek yanıltıcı olur, 503 ile geçici sorun bildirilir.
+            throw new DownstreamUnavailableException("product_service_unreachable");
         }
 
         String key = CART_PREFIX + customerId;

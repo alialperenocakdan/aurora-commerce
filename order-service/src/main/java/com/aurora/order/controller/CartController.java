@@ -29,6 +29,10 @@ public class CartController {
             // Ürün eklendikten sonra müşteriye güncel sepeti dönüyoruz
             return ResponseEntity.ok(cartService.getCart(customerId));
 
+        } catch (com.aurora.order.exception.DownstreamUnavailableException e) {
+            // RuntimeException'dan önce yakalanmalı: ürün servisi geçici olarak
+            // erişilemez, müşteriye "geçersiz istek" demek yanlış olur.
+            return ResponseEntity.status(503).body(Map.of("error", "service_unavailable"));
         } catch (RuntimeException e) {
             if ("not_found".equals(e.getMessage())) {
                 return ResponseEntity.status(404).body(Map.of("error", "not_found"));
