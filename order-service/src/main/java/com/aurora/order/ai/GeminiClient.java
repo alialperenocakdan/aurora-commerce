@@ -10,11 +10,7 @@ import org.springframework.web.client.RestClient;
 
 import java.util.Map;
 
-// Gemini generateContent REST API'sine ince bir sarmalayıcı.
-// com.google.genai SDK'sı yerine doğrudan REST kullanılıyor: SDK Maven Central'da
-// 1.63.0'a kadar ilerlemiş (spec'in andığı 1.0.0 çok eski), hızlı değişen bir yüzeye
-// karşı sürüm uyumsuzluğu riski almaktansa, curl ile bizzat doğrulanmış REST
-// sözleşmesine sadık kalmak daha güvenli.
+
 @Component
 public class GeminiClient {
 

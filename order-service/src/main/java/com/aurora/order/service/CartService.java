@@ -45,7 +45,7 @@ public class CartService {
 
         hashOps.put(key, productId.toString(), String.valueOf(currentQty + quantity));
 
-        // Sepetin ömrü 24 saat TTL
+        // Sepetin ömrü 24 saat
         redisTemplate.expire(key, Duration.ofHours(24));
     }
 

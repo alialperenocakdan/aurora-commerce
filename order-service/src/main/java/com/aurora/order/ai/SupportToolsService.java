@@ -38,8 +38,7 @@ public class SupportToolsService {
                 "found", true,
                 "orderId", order.getId(),
                 "status", order.getStatus(),
-                // Gemini'ye ham kuruş değeri DEĞİL, hazır formatlanmış TL metni gönderilir —
-                // dönüşümü modele bırakırsak (44,98 TL -> "4.498 TL" gibi) hatalı yorumlayabiliyor.
+
                 "totalFormatted", formatTl(order.getTotal()),
                 "items", items
         );

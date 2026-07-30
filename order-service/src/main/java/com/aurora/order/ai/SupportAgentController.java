@@ -14,10 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-// §10.4: Gemini function-calling ile salt-okunur sipariş destek asistanı.
-// Gemini SADECE üç salt-okunur tool + bir "öner" sinyali çağırabilir; hiçbir tool
-// state değiştirmez. Gerçek iptal yalnızca insan onayından sonra, ayrı ve sabit bir
-// endpoint olan POST /orders/{id}/cancel üzerinden yapılır.
+
 @RestController
 @RequestMapping("/support")
 public class SupportAgentController {

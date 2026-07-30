@@ -13,7 +13,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.UUID;
 
-// §10.5: gelen X-Trace-Id yoksa üretilir ve MDC'ye konur, ki loglar tutarlı olsun.
+
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class TraceIdFilter extends OncePerRequestFilter {

@@ -11,9 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
 
-// Hata → HTTP durum eşlemesi tek yerde. Böylece beklenmeyen bir hata (ör. DB
-// erişilemez) yanlışlıkla 401/422 gibi bir iş kuralı cevabına dönüşmez, dürüstçe
-// 500 olarak raporlanır.
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

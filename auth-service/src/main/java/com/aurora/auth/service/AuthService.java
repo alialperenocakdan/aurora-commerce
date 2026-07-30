@@ -26,9 +26,7 @@ public class AuthService {
     }
 
     public Long register(String email, String password) {
-        // Bozuk e-posta veya 8 karakterden kısa şifre → 422.
-        // Üst sınır 72 bayt: BCrypt yalnızca ilk 72 baytı işler, fazlası ya kırpılır
-        // ya da yeni Spring Security sürümlerinde hata fırlatır — baştan reddetmek en netidir.
+
         if (email == null || !email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
                 || password == null || password.length() < 8
                 || password.getBytes(StandardCharsets.UTF_8).length > 72) {
@@ -56,12 +54,12 @@ public class AuthService {
         Customer customer = repository.findByEmail(email)
                 .orElseThrow(InvalidCredentialsException::new);
 
-        // Gelen şifre ile veritabanındaki kriptolu şifre eşleşiyor mu
+
         if (!passwordEncoder.matches(password, customer.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
 
-        // Eşleşiyorsa bileti (JWT) kesip gönderiyoruz
+
         String token = jwtService.generateToken(customer.getId(), customer.getEmail(), customer.isAdmin());
         return Map.of("accessToken", token, "expiresIn", jwtService.getExpirationSeconds());
     }

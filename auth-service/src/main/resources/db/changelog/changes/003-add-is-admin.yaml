@@ -13,9 +13,7 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
-  # runOnChange: true — bu ürün yönetim uygulamasının TEK admin hesabı; e-postayı
-  # değiştirmen gerekirse dosyayı düzenleyip tekrar deploy etmen yeterli olsun,
-  # yeni bir changeset numarası uğraşısı gerekmesin.
+
   - changeSet:
       id: 004-grant-admin-role
       author: aurora

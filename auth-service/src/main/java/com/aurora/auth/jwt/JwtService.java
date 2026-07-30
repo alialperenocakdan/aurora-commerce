@@ -12,11 +12,11 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    // Bu gizli anahtarı application.yml dosyasından okuyacağız
+
     @Value("${jwt.secret}")
     private String secret;
 
-    // Token 1 saat (3600000 milisaniye) geçerli olacak
+
     @Value("${jwt.expiration:3600000}")
     private long expirationTime;
 
@@ -24,13 +24,12 @@ public class JwtService {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    // Login cevabındaki expiresIn alanı token'ın gerçek ömrünü yansıtsın diye
-    // sabit 3600 yerine buradan okunur.
+
     public long getExpirationSeconds() {
         return expirationTime / 1000;
     }
 
-    // Müşteri ID'si ve mailini alıp kriptolu bir Token (bilet) üretiyoruz
+
     public String generateToken(Long customerId, String email, boolean isAdmin) {
         return Jwts.builder()
                 .subject(customerId.toString()) // Token'ın sahibi (sub)
