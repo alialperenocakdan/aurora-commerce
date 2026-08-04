@@ -33,6 +33,10 @@ public class Product implements Serializable {
     @Column(name = "old_price")
     private Long oldPrice;
 
+    // Ürün detay sayfasında gösterilen serbest metin açıklama (opsiyonel)
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
     // --- Getter ve Setter Metodları ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -54,4 +58,7 @@ public class Product implements Serializable {
 
     public Long getOldPrice() { return oldPrice; }
     public void setOldPrice(Long oldPrice) { this.oldPrice = oldPrice; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 }

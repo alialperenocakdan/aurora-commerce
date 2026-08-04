@@ -53,6 +53,31 @@ public class CartService {
         redisTemplate.expire(key, Duration.ofHours(24));
     }
 
+    // SEPETTEKİ ADEDİ TAM OLARAK AYARLA (addItem üzerine eklerken bu değeri sabitler)
+    // Arayüzdeki +/- düğmeleri bunu kullanır: "3 olsun" demek, "3 ekle" demekten
+    // farklıdır ve tekrar gönderilse bile aynı sonucu verir (idempotent).
+    public void setQuantity(Long customerId, Long productId, Integer quantity) {
+        if (quantity == null || quantity < 0) throw new IllegalArgumentException("invalid_request");
+        if (quantity == 0) {
+            removeItem(customerId, productId);
+            return;
+        }
+
+        // Ürün gerçekten var mı (addItem ile aynı kurallar)
+        try {
+            productClient.getProduct(productId);
+        } catch (feign.FeignException.NotFound e) {
+            throw new RuntimeException("not_found");
+        } catch (Exception e) {
+            throw new DownstreamUnavailableException("product_service_unreachable");
+        }
+
+        String key = CART_PREFIX + customerId;
+        redisTemplate.<String, String>opsForHash()
+                .put(key, productId.toString(), quantity.toString());
+        redisTemplate.expire(key, Duration.ofHours(24));
+    }
+
     //SEPETTEN ÜRÜN ÇIKAR
     public void removeItem(Long customerId, Long productId) {
         redisTemplate.opsForHash().delete(CART_PREFIX + customerId, productId.toString());

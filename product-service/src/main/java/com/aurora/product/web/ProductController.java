@@ -73,6 +73,12 @@ public class ProductController {
             if (patch.getStock() != null) existing.setStock(patch.getStock());
             if (patch.getImageUrl() != null) existing.setImageUrl(patch.getImageUrl());
             if (patch.getCategory() != null) existing.setCategory(patch.getCategory());
+            // Boş metin göndermek açıklamayı temizler (kategoriden farklı olarak
+            // burada "sil" için ayrı bir sihirli değere gerek yok).
+            if (patch.getDescription() != null) {
+                existing.setDescription(
+                        patch.getDescription().isBlank() ? null : patch.getDescription());
+            }
             // oldPrice: 0 göndermek "indirimi kaldır" demektir. Alan hiç
             // gönderilmezse (null) mevcut indirim korunur — diğer alanlarla aynı mantık.
             if (patch.getOldPrice() != null) {

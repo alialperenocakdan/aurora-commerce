@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-add-description
+      author: aurora
+      changes:
+        # Ürün detay sayfasında gösterilen serbest metin açıklama.
+        # Boş bırakılabilir; yoksa detay sayfası açıklama bölümünü hiç göstermez.
+        - addColumn:
+            tableName: products
+            schemaName: product
+            columns:
+              - column:
+                  name: description
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: products
+            schemaName: product
+            columnName: description

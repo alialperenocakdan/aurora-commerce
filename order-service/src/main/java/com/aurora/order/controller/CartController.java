@@ -41,6 +41,30 @@ public class CartController {
         }
     }
 
+    // Adedi tam olarak ayarla (arayüzdeki +/- düğmeleri). quantity=0 ürünü kaldırır.
+    @PutMapping("/items/{productId}")
+    public ResponseEntity<?> updateItemQuantity(@PathVariable Long productId,
+                                                @RequestBody Map<String, Object> request) {
+        Long customerId = Long.parseLong(
+                SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
+        try {
+            Object raw = request.get("quantity");
+            if (!(raw instanceof Number)) {
+                return ResponseEntity.status(422).body(Map.of("error", "invalid_request"));
+            }
+            cartService.setQuantity(customerId, productId, ((Number) raw).intValue());
+            return ResponseEntity.ok(cartService.getCart(customerId));
+
+        } catch (com.aurora.order.exception.DownstreamUnavailableException e) {
+            return ResponseEntity.status(503).body(Map.of("error", "service_unavailable"));
+        } catch (RuntimeException e) {
+            if ("not_found".equals(e.getMessage())) {
+                return ResponseEntity.status(404).body(Map.of("error", "not_found"));
+            }
+            return ResponseEntity.status(422).body(Map.of("error", "invalid_request"));
+        }
+    }
+
     @GetMapping
     public ResponseEntity<?> viewCart() {
         Long customerId = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
