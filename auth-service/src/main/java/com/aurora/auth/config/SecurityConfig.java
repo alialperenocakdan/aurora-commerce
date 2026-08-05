@@ -17,6 +17,12 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private final JwtAuthFilter jwtAuthFilter;
+
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+        this.jwtAuthFilter = jwtAuthFilter;
+    }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -40,9 +46,11 @@ public class SecurityConfig {
                 .cors(org.springframework.security.config.Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        // Kayıt ve giriş herkese açık kalmalı
+                        .requestMatchers("/auth/register", "/auth/login").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()
+                        // /auth/me ve /auth/change-password dahil geri kalan her şey token ister
                         .anyRequest().authenticated()
                 )
                 // Token'sız/geçersiz istek: whitelabel yerine sözleşmedeki 401 gövdesi
@@ -50,7 +58,9 @@ public class SecurityConfig {
                     res.setStatus(401);
                     res.setContentType("application/json");
                     res.getWriter().write("{\"error\":\"unauthorized\"}");
-                }));
+                }))
+                .addFilterBefore(jwtAuthFilter,
+                        org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
