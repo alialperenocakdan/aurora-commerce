@@ -25,6 +25,14 @@ public class Order {
     @Column(name = "idempotency_key", unique = true)
     private String idempotencyKey;
 
+    // Uygulanan kupon ve sağladığı indirim (kuruş). total ZATEN indirimli
+    // tutardır; bu iki alan geçmiş siparişte fiş dökümünü gösterebilmek için.
+    @Column(name = "coupon_code")
+    private String couponCode;
+
+    @Column(name = "discount_amount", nullable = false)
+    private Long discountAmount = 0L;
+
 
 
     @Column(name = "note", columnDefinition = "TEXT")
@@ -58,4 +66,13 @@ public class Order {
     public String getNote() {return note;}
 
     public void setNote(String note) {this.note = note;}
+
+    public String getCouponCode() { return couponCode; }
+    public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
+
+    public Long getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(Long discountAmount) { this.discountAmount = discountAmount; }
+
+    // Fiş dökümü: indirimden önceki ara toplam
+    public Long getSubtotal() { return total + (discountAmount == null ? 0 : discountAmount); }
 }

@@ -1,0 +1,100 @@
+databaseChangeLog:
+  # Kupon tanımları. Tutarlar her yerde olduğu gibi KURUŞ cinsindendir.
+  - changeSet:
+      id: 003-create-coupons
+      author: aurora
+      changes:
+        - createTable:
+            tableName: coupons
+            schemaName: orders
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints: { primaryKey: true, nullable: false }
+              # Kod her zaman BÜYÜK harfe çevrilerek saklanır ki "kod10" ile
+              # "KOD10" aynı kupon olsun.
+              - column:
+                  name: code
+                  type: VARCHAR(40)
+                  constraints: { nullable: false, unique: true }
+              # PERCENT → discount_value yüzdedir (1-100)
+              # AMOUNT  → discount_value kuruş cinsinden sabit indirimdir
+              - column:
+                  name: discount_type
+                  type: VARCHAR(10)
+                  constraints: { nullable: false }
+              - column:
+                  name: discount_value
+                  type: BIGINT
+                  constraints: { nullable: false }
+              # Kuponun geçerli olması için gereken en düşük sepet tutarı (0 = sınırsız)
+              - column:
+                  name: min_order_total
+                  type: BIGINT
+                  defaultValueNumeric: 0
+                  constraints: { nullable: false }
+              # Yüzde indirimlerde indirimin üst sınırı (NULL = sınırsız)
+              - column:
+                  name: max_discount
+                  type: BIGINT
+              - column:
+                  name: valid_until
+                  type: TIMESTAMP WITHOUT TIME ZONE
+              # Toplam kaç kez kullanılabilir (NULL = sınırsız)
+              - column:
+                  name: usage_limit
+                  type: INTEGER
+              - column:
+                  name: used_count
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints: { nullable: false }
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints: { nullable: false }
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITHOUT TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints: { nullable: false }
+      rollback:
+        - dropTable: { tableName: coupons, schemaName: orders }
+
+  # Siparişe hangi kuponun ne kadar indirim sağladığını yazıyoruz ki
+  # geçmiş siparişlerde de fiş dökümü doğru görünsün.
+  - changeSet:
+      id: 004-add-order-discount
+      author: aurora
+      changes:
+        - addColumn:
+            tableName: orders
+            schemaName: orders
+            columns:
+              - column:
+                  name: coupon_code
+                  type: VARCHAR(40)
+              - column:
+                  name: discount_amount
+                  type: BIGINT
+                  defaultValueNumeric: 0
+                  constraints: { nullable: false }
+      rollback:
+        - dropColumn: { tableName: orders, schemaName: orders, columnName: coupon_code }
+        - dropColumn: { tableName: orders, schemaName: orders, columnName: discount_amount }
+
+  # Demo/deneme için birkaç kupon
+  - changeSet:
+      id: 005-seed-coupons
+      author: aurora
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO orders.coupons (code, discount_type, discount_value, min_order_total, max_discount, usage_limit)
+              VALUES
+                ('HOSGELDIN', 'PERCENT', 10, 0, 5000, NULL),
+                ('KIS50', 'AMOUNT', 5000, 15000, NULL, 100)
+              ON CONFLICT (code) DO NOTHING;

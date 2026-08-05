@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/changes/001-create-orders.yaml
   - include:
       file: db/changelog/changes/002-add-note-column.yaml
+  - include:
+      file: db/changelog/changes/003-create-coupons.yaml

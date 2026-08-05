@@ -1,7 +1,10 @@
 package com.aurora.order.service;
 
 import com.aurora.order.client.ProductClient;
+import com.aurora.order.domain.Coupon;
 import com.aurora.order.exception.DownstreamUnavailableException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -16,13 +19,19 @@ import java.util.Map;
 @Service
 public class CartService {
 
+    private static final Logger log = LoggerFactory.getLogger(CartService.class);
+
     private final StringRedisTemplate redisTemplate;
     private final ProductClient productClient;
+    private final CouponService couponService;
     private static final String CART_PREFIX = "cart:";
+    private static final String COUPON_PREFIX = "cart:coupon:";
 
-    public CartService(StringRedisTemplate redisTemplate, ProductClient productClient) {
+    public CartService(StringRedisTemplate redisTemplate, ProductClient productClient,
+                       CouponService couponService) {
         this.redisTemplate = redisTemplate;
         this.productClient = productClient;
+        this.couponService = couponService;
     }
 
     //SEPETE ÜRÜN EKLE
@@ -86,15 +95,80 @@ public class CartService {
     //SEPETİ TAMAMEN BOŞALT (başarılı checkout sonrası istemci bunu çağırır)
     public void clearCart(Long customerId) {
         redisTemplate.delete(CART_PREFIX + customerId);
+        redisTemplate.delete(COUPON_PREFIX + customerId); // kupon da sepetle gider
+    }
+
+    // --- Sepete iliştirilen kupon ---
+    // Kod ayrı bir anahtarda tutulur; sepet ürünleri hash'ini kirletmez.
+
+    public void applyCoupon(Long customerId, String code) {
+        long subtotal = calculateSubtotal(customerId);
+        // Geçersizse burada CouponException fırlar ve kupon kaydedilmez
+        Coupon coupon = couponService.validate(code, subtotal);
+        redisTemplate.opsForValue().set(
+                COUPON_PREFIX + customerId, coupon.getCode(), Duration.ofHours(24));
+    }
+
+    public void removeCoupon(Long customerId) {
+        redisTemplate.delete(COUPON_PREFIX + customerId);
+    }
+
+    public String getAppliedCouponCode(Long customerId) {
+        try {
+            return redisTemplate.opsForValue().get(COUPON_PREFIX + customerId);
+        } catch (Exception e) {
+            log.warn("Kupon okunamadı (Redis): {}", e.getMessage());
+            return null;
+        }
+    }
+
+    // Sadece ürün toplamı (kupon uygulanmadan önceki ara toplam)
+    public long calculateSubtotal(Long customerId) {
+        long subtotal = 0L;
+        for (Map<String, Object> line : buildLines(customerId)) {
+            subtotal += ((Number) line.get("lineTotal")).longValue();
+        }
+        return subtotal;
     }
 
     //SEPETİ GÖRÜNTÜLE VE FİYATLARI HESAPLA
     public Map<String, Object> getCart(Long customerId) {
+        List<Map<String, Object>> lines = buildLines(customerId);
+
+        long subtotal = 0L;
+        for (Map<String, Object> line : lines) {
+            subtotal += ((Number) line.get("lineTotal")).longValue();
+        }
+
+        // Sepetteki kupon hâlâ geçerli mi? (süresi dolmuş veya sepet minimumun
+        // altına düşmüş olabilir) — geçersizse indirim uygulanmaz, sepet yine görünür.
+        long discount = 0L;
+        String couponCode = getAppliedCouponCode(customerId);
+        if (couponCode != null) {
+            var valid = couponService.validateQuietly(couponCode, subtotal);
+            if (valid.isPresent()) {
+                discount = valid.get().calculateDiscount(subtotal);
+            } else {
+                couponCode = null; // artık geçerli değil, istemciye gösterme
+            }
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("lines", lines);
+        response.put("subtotal", subtotal);
+        response.put("discount", discount);
+        // total her zaman ÖDENECEK tutardır (indirim düşülmüş hali)
+        response.put("total", subtotal - discount);
+        response.put("couponCode", couponCode);
+        return response;
+    }
+
+    // Sepet satırlarını ürün servisinden fiyatlandırarak kurar
+    private List<Map<String, Object>> buildLines(Long customerId) {
         String key = CART_PREFIX + customerId;
         Map<Object, Object> rawCart = redisTemplate.opsForHash().entries(key);
 
         List<Map<String, Object>> lines = new ArrayList<>();
-        long total = 0L;
 
         for (Map.Entry<Object, Object> entry : rawCart.entrySet()) {
             Long productId = Long.parseLong(entry.getKey().toString());
@@ -112,7 +186,6 @@ public class CartService {
             }
             // ----------------------------
 
-            // Geri kalanı tamamen aynı kalıyor!
             if (product != null) {
                 Long unitPrice = ((Number) product.get("unitPrice")).longValue();
                 long lineTotal = unitPrice * quantity;
@@ -123,14 +196,8 @@ public class CartService {
                 line.put("unitPrice", unitPrice);
                 line.put("lineTotal", lineTotal);
                 lines.add(line);
-
-                total += lineTotal;
             }
         }
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("lines", lines);
-        response.put("total", total);
-        return response;
+        return lines;
     }
 }

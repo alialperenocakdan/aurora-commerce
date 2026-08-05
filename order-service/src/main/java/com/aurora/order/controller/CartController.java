@@ -79,6 +79,39 @@ public class CartController {
         return ResponseEntity.ok(cartService.getCart(customerId));
     }
 
+    // --- Kupon ---
+
+    @PostMapping("/coupon")
+    public ResponseEntity<?> applyCoupon(@RequestBody Map<String, Object> request) {
+        Long customerId = Long.parseLong(
+                SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
+        Object code = request.get("code");
+        if (code == null || code.toString().isBlank()) {
+            return ResponseEntity.status(422).body(Map.of("error", "invalid_request"));
+        }
+        try {
+            cartService.applyCoupon(customerId, code.toString());
+            return ResponseEntity.ok(cartService.getCart(customerId));
+        } catch (com.aurora.order.exception.CouponException e) {
+            // Sebep kodu gövdede: arayüz "süresi dolmuş" ile "minimum tutar"
+            // arasındaki farkı kullanıcıya gösterebilsin
+            Map<String, Object> body = new java.util.HashMap<>();
+            body.put("error", e.getCode());
+            if (e.getMinOrderTotal() != null) body.put("minOrderTotal", e.getMinOrderTotal());
+            return ResponseEntity.status(422).body(body);
+        } catch (com.aurora.order.exception.DownstreamUnavailableException e) {
+            return ResponseEntity.status(503).body(Map.of("error", "service_unavailable"));
+        }
+    }
+
+    @DeleteMapping("/coupon")
+    public ResponseEntity<?> removeCoupon() {
+        Long customerId = Long.parseLong(
+                SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString());
+        cartService.removeCoupon(customerId);
+        return ResponseEntity.ok(cartService.getCart(customerId));
+    }
+
     // Sepeti tamamen boşalt — başarılı checkout sonrası istemci çağırır
     @DeleteMapping
     public ResponseEntity<?> clearCart() {

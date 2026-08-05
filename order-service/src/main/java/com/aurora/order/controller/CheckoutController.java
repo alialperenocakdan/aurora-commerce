@@ -19,9 +19,12 @@ import java.util.UUID;
 public class CheckoutController {
 
     private final OrderService orderService;
+    private final com.aurora.order.service.CartService cartService;
 
-    public CheckoutController(OrderService orderService) {
+    public CheckoutController(OrderService orderService,
+                              com.aurora.order.service.CartService cartService) {
         this.orderService = orderService;
+        this.cartService = cartService;
     }
 
     @PostMapping
@@ -37,8 +40,14 @@ public class CheckoutController {
                 idempotencyKey = UUID.randomUUID().toString();
             }
 
+            // Kupon istemciden DEĞİL sepetten okunur: istemcinin gönderdiği bir
+            // koda güvenip indirim uygulamak, sepette hiç doğrulanmamış bir
+            // kuponun geçmesine yol açardı.
+            String couponCode = cartService.getAppliedCouponCode(customerId);
+
             //Siparişi ver
-            Order order = orderService.checkout(customerId, request.get("lines"), idempotencyKey);
+            Order order = orderService.checkout(customerId, request.get("lines"),
+                    idempotencyKey, couponCode);
 
             // Müşteriye sadece Sipariş Numarasını dön
             return ResponseEntity.ok(Map.of("orderId", order.getId()));

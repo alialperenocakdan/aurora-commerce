@@ -1,8 +1,10 @@
 package com.aurora.order.service;
 
 import com.aurora.order.client.ProductClient;
+import com.aurora.order.domain.Coupon;
 import com.aurora.order.domain.Order;
 import com.aurora.order.domain.OrderItem;
+import com.aurora.order.exception.CouponException;
 import com.aurora.order.event.OrderCreatedEvent;
 import com.aurora.order.exception.DownstreamUnavailableException;
 import com.aurora.order.exception.DuplicateOrderException;
@@ -40,6 +42,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductClient productClient;
     private final StringRedisTemplate redisTemplate;
+    private final CouponService couponService;
     private static final String IDEM_PREFIX = "idem:";
 
     // internalToken'ı sınıfın içinde tanımlıyoruz
@@ -52,11 +55,13 @@ public class OrderService {
     private String orderCreatedTopic;
 
     public OrderService(OrderRepository orderRepository, ProductClient productClient,
-                        StringRedisTemplate redisTemplate, KafkaTemplate<String, Object> kafkaTemplate) {
+                        StringRedisTemplate redisTemplate, KafkaTemplate<String, Object> kafkaTemplate,
+                        CouponService couponService) {
         this.orderRepository = orderRepository;
         this.productClient = productClient;
         this.redisTemplate = redisTemplate;
         this.kafkaTemplate = kafkaTemplate;
+        this.couponService = couponService;
     }
 
     //aynı Idempotency-Key ile daha önce oluşmuş siparişi bul
@@ -97,7 +102,8 @@ public class OrderService {
 
     @Transactional
     @CircuitBreaker(name = "productService", fallbackMethod = "checkoutFallback")
-    public Order checkout(Long customerId, List<Map<String, Object>> requestLines, String idempotencyKey) {
+    public Order checkout(Long customerId, List<Map<String, Object>> requestLines,
+                          String idempotencyKey, String couponCode) {
 
         log.info("Checkout başladı: customerId={}, idempotencyKey={}, lineCount={}",
                 customerId, idempotencyKey, requestLines == null ? 0 : requestLines.size());
@@ -190,11 +196,35 @@ public class OrderService {
                 totalAmount += (unitPrice * quantity);
             }
 
-            order.setTotal(totalAmount);
+            // KUPON: indirim, stok düşüldükten sonra ürünlerin GERÇEK fiyatları
+            // üzerinden hesaplanır — istemcinin gönderdiği tutara asla güvenmiyoruz.
+            long discount = 0L;
+            String appliedCode = null;
+            if (couponCode != null && !couponCode.isBlank()) {
+                try {
+                    Coupon coupon = couponService.validate(couponCode, totalAmount);
+                    // Sayaç önce artırılır: limit dolmuşsa indirim hiç uygulanmaz
+                    if (couponService.consume(coupon)) {
+                        discount = coupon.calculateDiscount(totalAmount);
+                        appliedCode = coupon.getCode();
+                        log.info("Kupon uygulandı: code={}, indirim={}", appliedCode, discount);
+                    }
+                } catch (CouponException e) {
+                    // Sipariş kuponsuz devam eder; müşteriyi checkout'un eşiğinde
+                    // geri çevirmek yerine indirimsiz tamamlamak daha az zarar verir.
+                    log.warn("Kupon uygulanamadı, sipariş kuponsuz sürüyor: code={}, sebep={}",
+                            couponCode, e.getCode());
+                }
+            }
+
+            order.setCouponCode(appliedCode);
+            order.setDiscountAmount(discount);
+            order.setTotal(totalAmount - discount);
 
             // İçi dolan siparişi son haliyle tekrar kaydet
             Order saved = orderRepository.save(order);
-            log.info("Sipariş kaydedildi: orderId={}, total={}", saved.getId(), saved.getTotal());
+            log.info("Sipariş kaydedildi: orderId={}, araToplam={}, indirim={}, total={}",
+                    saved.getId(), totalAmount, discount, saved.getTotal());
             safeKafkaSend(saved);
 
             // İdempotency anahtarını Redis'te siparişe bağla: replay artık DB'ye inmeden cevaplanır
@@ -228,7 +258,9 @@ public class OrderService {
 
 
     // out_of_stock gibi iş kuralı hataları buraya uğramadan olduğu gibi yukarı fırlar.
-    public Order checkoutFallback(Long customerId, List<Map<String, Object>> requestLines, String idempotencyKey, CallNotPermittedException ex) {
+    public Order checkoutFallback(Long customerId, List<Map<String, Object>> requestLines,
+                                  String idempotencyKey, String couponCode,
+                                  CallNotPermittedException ex) {
         log.warn("Circuit breaker AÇIK! product-service erişilemez durumda: {}", ex.getMessage());
         throw new DownstreamUnavailableException("circuit_open");
     }

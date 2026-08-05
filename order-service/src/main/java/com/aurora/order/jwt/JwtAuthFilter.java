@@ -37,9 +37,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
                 Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
 
-                // Biletten müşteri ID'sini çıkar ve sisteme "Bu müşteri giriş yaptı" de
+                // Biletten müşteri ID'sini çıkar ve sisteme "Bu müşteri giriş yaptı" de.
+                // "admin" claim'i varsa ROLE_ADMIN veriyoruz — kupon yönetimi
+                // uçları bunu ister (product-service ile aynı desen).
                 String customerId = claims.getSubject();
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(customerId, null, java.util.Collections.emptyList());
+                boolean isAdmin = Boolean.TRUE.equals(claims.get("admin", Boolean.class));
+                var authorities = isAdmin
+                        ? java.util.List.of(
+                            new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))
+                        : java.util.List.<org.springframework.security.core.authority.SimpleGrantedAuthority>of();
+                UsernamePasswordAuthenticationToken auth =
+                        new UsernamePasswordAuthenticationToken(customerId, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(auth);
             } catch (Exception e) {
                 // Token geçersizse, süresi dolmuşsa veya sahteyse sessizce reddeder (401 döner)

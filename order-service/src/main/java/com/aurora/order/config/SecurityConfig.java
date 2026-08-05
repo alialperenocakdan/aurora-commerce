@@ -28,15 +28,24 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()
+                        // Kupon yönetimi yalnızca admin (ürün yazma uçlarıyla aynı kural)
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         // Sepete ürün eklemek veya sipariş vermek için kesinlikle giriş yapılmalıdır.
                         .anyRequest().authenticated()
                 )
                 // Token'sız/geçersiz istek: whitelabel yerine sözleşmedeki 401 gövdesi
-                .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
-                    res.setStatus(401);
-                    res.setContentType("application/json");
-                    res.getWriter().write("{\"error\":\"unauthorized\"}");
-                }))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((req, res, ex) -> {
+                            res.setStatus(401);
+                            res.setContentType("application/json");
+                            res.getWriter().write("{\"error\":\"unauthorized\"}");
+                        })
+                        // Giriş yapmış ama admin olmayan istek → 403
+                        .accessDeniedHandler((req, res, ex) -> {
+                            res.setStatus(403);
+                            res.setContentType("application/json");
+                            res.getWriter().write("{\"error\":\"forbidden\"}");
+                        }))
                 //bilet kontrolcüsü
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
