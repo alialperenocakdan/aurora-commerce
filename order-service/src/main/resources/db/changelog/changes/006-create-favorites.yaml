@@ -1,0 +1,45 @@
+databaseChangeLog:
+  # Favoriler sepetten farklı olarak KALICIDIR: Redis'te değil veritabanında
+  # tutulur, oturum kapansa da kaybolmaz.
+  - changeSet:
+      id: 006-create-favorites
+      author: aurora
+      changes:
+        - createTable:
+            tableName: favorites
+            schemaName: orders
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints: { primaryKey: true, nullable: false }
+              - column:
+                  name: customer_id
+                  type: BIGINT
+                  constraints: { nullable: false }
+              - column:
+                  name: product_id
+                  type: BIGINT
+                  constraints: { nullable: false }
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITHOUT TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints: { nullable: false }
+        # Aynı ürün aynı kullanıcıda iki kez favorilenemez — "ekle" isteği
+        # tekrarlansa bile liste bozulmaz.
+        - addUniqueConstraint:
+            tableName: favorites
+            schemaName: orders
+            columnNames: customer_id, product_id
+            constraintName: uk_favorites_customer_product
+        # Bir kullanıcının favorilerini listelemek en sık yapılan sorgu
+        - createIndex:
+            tableName: favorites
+            schemaName: orders
+            indexName: idx_favorites_customer
+            columns:
+              - column: { name: customer_id }
+      rollback:
+        - dropTable: { tableName: favorites, schemaName: orders }
