@@ -28,6 +28,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()
+                        // Vitrindeki kampanya şeridi: giriş yapmamış ziyaretçi de görebilmeli
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/coupons/active").permitAll()
                         // Kupon yönetimi yalnızca admin (ürün yazma uçlarıyla aynı kural)
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         // Sepete ürün eklemek veya sipariş vermek için kesinlikle giriş yapılmalıdır.
