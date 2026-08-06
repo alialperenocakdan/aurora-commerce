@@ -34,6 +34,11 @@ public class SecurityConfig {
                         // Ürün resimleri (kendi sunucumuzdan barındırılıyor, static klasör) herkese açık
                         .requestMatchers(HttpMethod.GET, "/images/**").permitAll()
 
+                        // Kategori listesi vitrinde de kullanılabilir; oluşturma/silme admin
+                        .requestMatchers(HttpMethod.GET, "/categories").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/categories").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/categories/**").hasRole("ADMIN")
+
                         // Arka kapıyı Spring Security'den muaf tutuyoruz.
                         // Çünkü şifre kontrolünü (X-Internal-Token) Controller içinde bizzat biz yapıyoruz!
                         .requestMatchers("/internal/**").permitAll()

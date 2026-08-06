@@ -1,0 +1,44 @@
+databaseChangeLog:
+  # Kategoriler şimdiye kadar yalnızca products.category serbest metniydi;
+  # bu yüzden "içi boş kategori" diye bir şey olamıyordu. Yönetim panelinde
+  # önce kategori açıp sonra içine ürün eklemek için kalıcı bir liste gerekti.
+  #
+  # products.category METİN OLARAK KALIYOR (foreign key yapılmadı): müşteri
+  # uygulaması ve mevcut veriler hiç etkilenmesin, bu tablo yalnızca
+  # "tanımlı kategoriler kataloğu" olarak çalışsın.
+  - changeSet:
+      id: 008-create-categories
+      author: aurora
+      changes:
+        - createTable:
+            tableName: categories
+            schemaName: product
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints: { primaryKey: true, nullable: false }
+              - column:
+                  name: name
+                  type: VARCHAR(80)
+                  constraints: { nullable: false, unique: true }
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITHOUT TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints: { nullable: false }
+      rollback:
+        - dropTable: { tableName: categories, schemaName: product }
+
+  # Hâlihazırdaki ürünlerde geçen kategoriler kaybolmasın: tabloya aktarılır.
+  - changeSet:
+      id: 009-seed-existing-categories
+      author: aurora
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO product.categories (name)
+              SELECT DISTINCT category FROM product.products
+              WHERE category IS NOT NULL AND category <> ''
+              ON CONFLICT (name) DO NOTHING;

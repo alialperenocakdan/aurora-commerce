@@ -7,3 +7,4 @@ databaseChangeLog:
   - include: { file: changes/005-add-category.yaml, relativeToChangelogFile: true }
   - include: { file: changes/006-add-old-price.yaml, relativeToChangelogFile: true }
   - include: { file: changes/007-add-description.yaml, relativeToChangelogFile: true }
+  - include: { file: changes/008-create-categories.yaml, relativeToChangelogFile: true }

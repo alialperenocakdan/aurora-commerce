@@ -24,4 +24,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             nativeQuery = true
     )
     void restoreStock(@Param("id") Long id, @Param("qty") Integer qty);
+
+    // Kategori silinmeden önce içinin boş olduğunu doğrulamak için
+    long countByCategory(String category);
 }
