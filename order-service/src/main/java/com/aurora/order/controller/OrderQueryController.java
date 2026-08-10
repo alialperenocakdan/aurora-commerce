@@ -96,7 +96,22 @@ public class OrderQueryController {
             return ResponseEntity.status(403).body(Map.of("error", "forbidden"));
         }
 
-        //Her şey yolundaysa siparişi dön
-        return ResponseEntity.ok(order);
+        // Siparişin yanında durum geçmişini de dönüyoruz: müşteri takip
+        // çubuğunu tek istekte çizebilsin ("Kargoya verildi: 6 Ağustos 14:20").
+        Map<String, Object> view = new java.util.HashMap<>();
+        view.put("id", order.getId());
+        view.put("customerId", order.getCustomerId());
+        view.put("status", order.getStatus());
+        view.put("statusLabel", com.aurora.order.domain.OrderStatus.label(order.getStatus()));
+        view.put("cancellable", com.aurora.order.domain.OrderStatus.isCancellable(order.getStatus()));
+        view.put("total", order.getTotal());
+        view.put("discountAmount", order.getDiscountAmount());
+        view.put("couponCode", order.getCouponCode());
+        view.put("subtotal", order.getSubtotal());
+        view.put("note", order.getNote());
+        view.put("createdAt", order.getCreatedAt());
+        view.put("items", order.getItems());
+        view.put("history", orderService.getStatusHistory(orderId));
+        return ResponseEntity.ok(view);
     }
 }

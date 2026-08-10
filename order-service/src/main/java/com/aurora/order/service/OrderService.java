@@ -4,7 +4,11 @@ import com.aurora.order.client.ProductClient;
 import com.aurora.order.domain.Coupon;
 import com.aurora.order.domain.Order;
 import com.aurora.order.domain.OrderItem;
+import com.aurora.order.domain.OrderStatus;
+import com.aurora.order.domain.OrderStatusHistory;
 import com.aurora.order.exception.CouponException;
+import com.aurora.order.exception.InvalidStatusTransitionException;
+import com.aurora.order.repo.OrderStatusHistoryRepository;
 import com.aurora.order.event.OrderCreatedEvent;
 import com.aurora.order.exception.DownstreamUnavailableException;
 import com.aurora.order.exception.DuplicateOrderException;
@@ -40,6 +44,7 @@ public class OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
+    private final OrderStatusHistoryRepository statusHistoryRepository;
     private final ProductClient productClient;
     private final StringRedisTemplate redisTemplate;
     private final CouponService couponService;
@@ -54,10 +59,13 @@ public class OrderService {
     @Value("${kafka.topics.order-created}")
     private String orderCreatedTopic;
 
-    public OrderService(OrderRepository orderRepository, ProductClient productClient,
+    public OrderService(OrderRepository orderRepository,
+                        OrderStatusHistoryRepository statusHistoryRepository,
+                        ProductClient productClient,
                         StringRedisTemplate redisTemplate, KafkaTemplate<String, Object> kafkaTemplate,
                         CouponService couponService) {
         this.orderRepository = orderRepository;
+        this.statusHistoryRepository = statusHistoryRepository;
         this.productClient = productClient;
         this.redisTemplate = redisTemplate;
         this.kafkaTemplate = kafkaTemplate;
@@ -223,6 +231,8 @@ public class OrderService {
 
             // İçi dolan siparişi son haliyle tekrar kaydet
             Order saved = orderRepository.save(order);
+            // Takip çubuğunun ilk adımı: "Sipariş alındı"
+            recordStatus(saved.getId(), saved.getStatus());
             log.info("Sipariş kaydedildi: orderId={}, araToplam={}, indirim={}, total={}",
                     saved.getId(), totalAmount, discount, saved.getTotal());
             safeKafkaSend(saved);
@@ -265,9 +275,50 @@ public class OrderService {
         throw new DownstreamUnavailableException("circuit_open");
     }
 
-    // Saga'nın tersi: sadece 'pending' siparişi iptal eder, stoğu restore ile geri yükler.
-    // Replay güvenliği state'ten gelir — zaten 'cancelled' bulunan sipariş aynı cevabı döner,
-    // stoğa ikinci kez dokunulmaz.
+    // --- Durum yönetimi (yönetim paneli) ---
+
+    // Siparişi bir sonraki duruma geçirir. Geçersiz geçişler burada durur:
+    // kural OrderStatus'ta tek yerde tanımlı, her çağıran aynı kuralı uygular.
+    @Transactional
+    public Order changeStatus(Long orderId, String newStatus) {
+        Order order = orderRepository.findById(orderId).orElseThrow(OrderNotFoundException::new);
+        String current = order.getStatus();
+
+        if (!OrderStatus.isValid(newStatus)) {
+            throw new InvalidStatusTransitionException(current, newStatus);
+        }
+        // Aynı duruma tekrar geçirmek hata değil: istek tekrarlansa da
+        // sonuç değişmesin (idempotent), geçmişe ikinci kayıt düşülmesin.
+        if (current.equals(newStatus)) {
+            return order;
+        }
+        if (!OrderStatus.canTransition(current, newStatus)) {
+            throw new InvalidStatusTransitionException(current, newStatus);
+        }
+
+        // İptal ayrı bir iş: stok iadesi gerektirir, cancel() üzerinden yürür
+        if (OrderStatus.CANCELLED.equals(newStatus)) {
+            return cancelInternal(order);
+        }
+
+        order.setStatus(newStatus);
+        Order saved = orderRepository.save(order);
+        recordStatus(saved.getId(), newStatus);
+        log.info("Sipariş durumu değişti: orderId={}, {} -> {}", orderId, current, newStatus);
+        return saved;
+    }
+
+    public List<OrderStatusHistory> getStatusHistory(Long orderId) {
+        return statusHistoryRepository.findByOrderIdOrderByIdAsc(orderId);
+    }
+
+    private void recordStatus(Long orderId, String status) {
+        statusHistoryRepository.save(new OrderStatusHistory(orderId, status));
+    }
+
+    // Saga'nın tersi: iptal edilebilir durumdaki siparişi iptal eder ve stoğu
+    // restore ile geri yükler. Replay güvenliği state'ten gelir — zaten
+    // 'cancelled' bulunan sipariş aynı cevabı döner, stoğa ikinci kez dokunulmaz.
     @Transactional
     public Order cancel(Long orderId, Long customerId) {
         log.info("İptal isteği: orderId={}, customerId={}", orderId, customerId);
@@ -276,11 +327,18 @@ public class OrderService {
         if (!order.getCustomerId().equals(customerId)) {
             throw new ForbiddenException();
         }
-        if ("cancelled".equals(order.getStatus())) {
-            log.info("İptal replay: orderId={} zaten cancelled, tekrar restock edilmedi", orderId);
-            return order; // idempotent replay: ikinci kez restock etmeden aynı cevabı dön
+        return cancelInternal(order);
+    }
+
+    // Ortak iptal gövdesi: hem müşterinin iptali hem yönetim panelinden
+    // "iptal" durumuna geçiş buradan geçer, böylece stok iadesi tek yerde.
+    private Order cancelInternal(Order order) {
+        if (OrderStatus.CANCELLED.equals(order.getStatus())) {
+            log.info("İptal replay: orderId={} zaten cancelled, tekrar restock edilmedi", order.getId());
+            return order; // idempotent replay
         }
-        if (!"pending".equals(order.getStatus())) {
+        // Kargoya verilmiş/teslim edilmiş sipariş iptal edilemez
+        if (!OrderStatus.isCancellable(order.getStatus())) {
             throw new NotCancellableException();
         }
 
@@ -288,11 +346,13 @@ public class OrderService {
                 .map(item -> Map.<String, Object>of("productId", item.getProductId(), "quantity", item.getQuantity()))
                 .toList();
 
-        order.setStatus("cancelled");
+        order.setStatus(OrderStatus.CANCELLED);
         Order saved = orderRepository.save(order);
-        log.info("Sipariş iptal edildi, stok iade isteği gönderiliyor: orderId={}, lines={}", orderId, lines);
-        // restore başarısız olursa exception yukarı fırlar, @Transactional status'u geri alır —
-        // sipariş 'pending' kalır ve müşteri güvenle tekrar deneyebilir.
+        recordStatus(saved.getId(), OrderStatus.CANCELLED);
+        log.info("Sipariş iptal edildi, stok iade isteği gönderiliyor: orderId={}, lines={}",
+                order.getId(), lines);
+        // restore başarısız olursa exception yukarı fırlar, @Transactional durumu
+        // geri alır — sipariş eski halinde kalır ve müşteri güvenle tekrar deneyebilir.
         productClient.restore(internalToken, Map.of("lines", lines));
         return saved;
     }

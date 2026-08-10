@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-create-coupons.yaml
   - include:
       file: db/changelog/changes/006-create-favorites.yaml
+  - include:
+      file: db/changelog/changes/007-order-status-history.yaml

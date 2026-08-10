@@ -1,0 +1,69 @@
+databaseChangeLog:
+  # Siparişin hangi duruma ne zaman geçtiğinin kaydı. Müşteriye "kargoya
+  # verildi: 6 Ağustos 14:20" diyebilmek ve geçmişi denetleyebilmek için
+  # durum yalnızca orders.status'ta tutulmuyor, her geçiş ayrıca yazılıyor.
+  - changeSet:
+      id: 007-order-status-history
+      author: aurora
+      changes:
+        - createTable:
+            tableName: order_status_history
+            schemaName: orders
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints: { primaryKey: true, nullable: false }
+              - column:
+                  name: order_id
+                  type: BIGINT
+                  constraints: { nullable: false }
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints: { nullable: false }
+              - column:
+                  name: changed_at
+                  type: TIMESTAMP WITHOUT TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints: { nullable: false }
+        - createIndex:
+            tableName: order_status_history
+            schemaName: orders
+            indexName: idx_status_history_order
+            columns:
+              - column: { name: order_id }
+      rollback:
+        - dropTable: { tableName: order_status_history, schemaName: orders }
+
+  # Mevcut siparişlerin ilk durumu geçmişe aktarılır ki eski siparişlerde de
+  # takip çubuğu boş görünmesin.
+  - changeSet:
+      id: 008-seed-status-history
+      author: aurora
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO orders.order_status_history (order_id, status, changed_at)
+              SELECT id, status, created_at FROM orders.orders;
+
+  # orders tablosu kurulurken status sütununa CHECK kısıtı konmuştu ve yalnızca
+  # eski üç durumu tanıyordu ('pending','shipped','cancelled'). Yeni akıştaki
+  # 'preparing' ve 'delivered' bu kısıta takılıp veritabanı hatası veriyordu;
+  # kısıt yeni yaşam döngüsünü kapsayacak şekilde yeniden tanımlanıyor.
+  - changeSet:
+      id: 009-widen-status-check
+      author: aurora
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE orders.orders DROP CONSTRAINT IF EXISTS orders_status_check;
+              ALTER TABLE orders.orders ADD CONSTRAINT orders_status_check
+                CHECK (status IN ('pending','preparing','shipped','delivered','cancelled'));
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE orders.orders DROP CONSTRAINT IF EXISTS orders_status_check;
+              ALTER TABLE orders.orders ADD CONSTRAINT orders_status_check
+                CHECK (status IN ('pending','shipped','cancelled'));
