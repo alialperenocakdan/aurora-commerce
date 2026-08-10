@@ -23,6 +23,38 @@ services:
       interval: 5s
       retries: 5
 
+  # Sipariş olaylarının taşındığı mesaj kuyruğu. KRaft modunda çalışır
+  # (ZooKeeper gerektirmez), tek düğüm yerel geliştirme için yeterlidir.
+  kafka:
+    image: apache/kafka:3.8.0
+    ports:
+      # Host'tan (IDE'den çalışan servis) localhost:9092 ile erişilir
+      - "9092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # İki ayrı kapı: INTERNAL compose ağı içindir, HOST makinen içindir.
+      KAFKA_LISTENERS: INTERNAL://:9094,HOST://:29092,CONTROLLER://:9093
+      # Kritik: broker bağlanan istemciye "bana şu adresten ulaş" der. Tek bir
+      # adres duyurulursa ya konteynerler ya da host'taki istemci kırılır —
+      # "localhost" konteynerin içinde kendisine çıkar, broker'a değil.
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9094,HOST://localhost:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # Tek düğümde çoğaltma yapılamaz
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9094 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   # --profile full: servislerin kendileri de konteyner olarak[cite: 1]
   auth-service:
     build:
@@ -71,12 +103,16 @@ services:
       JWT_SECRET: local-dev-secret-change-me-32bytes!
       INTERNAL_TOKEN: local-internal-token
       PRODUCT_SERVICE_URL: http://product-service:8080
+      # Compose ağının içinden broker'ın INTERNAL kapısı kullanılır
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9094
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     ports: ["8083:8080"]
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
 
 volumes:

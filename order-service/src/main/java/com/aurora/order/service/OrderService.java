@@ -10,6 +10,7 @@ import com.aurora.order.exception.CouponException;
 import com.aurora.order.exception.InvalidStatusTransitionException;
 import com.aurora.order.repo.OrderStatusHistoryRepository;
 import com.aurora.order.event.OrderCreatedEvent;
+import com.aurora.order.event.OrderStatusChangedEvent;
 import com.aurora.order.exception.DownstreamUnavailableException;
 import com.aurora.order.exception.DuplicateOrderException;
 import com.aurora.order.exception.ForbiddenException;
@@ -58,6 +59,9 @@ public class OrderService {
 
     @Value("${kafka.topics.order-created}")
     private String orderCreatedTopic;
+
+    @Value("${kafka.topics.order-status-changed}")
+    private String orderStatusChangedTopic;
 
     public OrderService(OrderRepository orderRepository,
                         OrderStatusHistoryRepository statusHistoryRepository,
@@ -304,8 +308,22 @@ public class OrderService {
         order.setStatus(newStatus);
         Order saved = orderRepository.save(order);
         recordStatus(saved.getId(), newStatus);
+        // Bildirim üretimi tüketiciye devredilir: burada beklemiyoruz, olay
+        // gitmese bile durum değişikliği geçerlidir.
+        safeKafkaSendStatusChanged(saved, current, newStatus);
         log.info("Sipariş durumu değişti: orderId={}, {} -> {}", orderId, current, newStatus);
         return saved;
+    }
+
+    // Kafka publish'i best-effort: broker kapalıysa durum değişikliği düşmez
+    private void safeKafkaSendStatusChanged(Order order, String from, String to) {
+        try {
+            kafkaTemplate.send(orderStatusChangedTopic, order.getId().toString(),
+                    new OrderStatusChangedEvent(order.getId(), order.getCustomerId(),
+                            from, to, java.time.Instant.now()));
+        } catch (Exception e) {
+            log.warn("Kafka'ya durum olayi gonderilemedi (islem etkilenmedi): {}", e.getMessage());
+        }
     }
 
     public List<OrderStatusHistory> getStatusHistory(Long orderId) {

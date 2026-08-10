@@ -19,6 +19,22 @@ spring:
         # Broker'a ulaşılamıyorsa en fazla 3sn bekle, checkout'u askıda bırakma.
         # §10.1 kuralı: Kafka kapalıyken checkout yine de başarılı olmalı.
         max.block.ms: 3000
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:aurora-notifications}
+      # Tüketici ilk kez bağlandığında baştaki olayları da işlesin
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        # Olay sınıflarımızın paketine güven (JSON -> record dönüşümü için)
+        spring.json.trusted.packages: com.aurora.order.event
+    listener:
+      # Kafka'nın olmadığı ortamlarda (ör. Render'da broker yok) tüketiciyi
+      # kapatmak için: KAFKA_CONSUMER_ENABLED=false. Kapalıyken uygulama
+      # normal çalışır, yalnızca bildirim üretilmez.
+      auto-startup: ${KAFKA_CONSUMER_ENABLED:true}
+      # Tüketicide hata olursa olayı sonsuz döngüde tekrar denemesin
+      ack-mode: record
   cloud:
     openfeign:
       client:
@@ -76,6 +92,7 @@ resilience4j:
 kafka:
   topics:
     order-created: order.created
+    order-status-changed: order.status.changed
 
 # §10.5: yapılandırılmış (ECS) console log çıktısı — MDC'deki traceId otomatik dahil olur
 logging:
