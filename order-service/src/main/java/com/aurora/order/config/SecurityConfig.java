@@ -30,6 +30,10 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         // Vitrindeki kampanya şeridi: giriş yapmamış ziyaretçi de görebilmeli
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/coupons/active").permitAll()
+                        // Servisler arası kapı: JWT değil, X-Internal-Token ile korunur.
+                        // Doğrulamayı controller kendisi yapar (product-service'teki
+                        // /internal/stock ile aynı desen) — o yüzden Spring Security'den muaf.
+                        .requestMatchers("/internal/**").permitAll()
                         // Kupon yönetimi yalnızca admin (ürün yazma uçlarıyla aynı kural)
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         // Sepete ürün eklemek veya sipariş vermek için kesinlikle giriş yapılmalıdır.

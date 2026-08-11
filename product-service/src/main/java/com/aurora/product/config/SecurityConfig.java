@@ -46,6 +46,15 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()
 
+                        // DİKKAT: bu üç kural aşağıdaki admin kurallarından ÖNCE gelmeli.
+                        // Spring Security ilk eşleşen kuralı uygular; "/products/**"
+                        // admin kuralı önce gelseydi sıradan müşteri kendi yorumunu
+                        // yazamazdı (403). Yorum yazmak müşterinin hakkı, admin işi değil.
+                        // Satın alma şartı ayrıca ReviewService'te kontrol edilir.
+                        .requestMatchers(HttpMethod.POST, "/products/*/reviews").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/products/*/reviews/mine").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/products/*/reviews/mine").authenticated()
+
                         // Ürün yazma işlemleri (ekleme/güncelleme/silme) SADECE admin
                         // hesabına açık — ayrı yönetim uygulaması bunu kullanır.
                         // Normal giriş yapmış bir müşteri (Postman'dan bile) artık bunları çağıramaz.

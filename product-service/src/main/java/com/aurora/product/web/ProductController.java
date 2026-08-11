@@ -19,9 +19,12 @@ import java.util.Map;
 public class ProductController {
 
     private final ProductRepository productRepository;
+    private final com.aurora.product.repo.ReviewRepository reviewRepository;
 
-    public ProductController(ProductRepository productRepository) {
+    public ProductController(ProductRepository productRepository,
+                             com.aurora.product.repo.ReviewRepository reviewRepository) {
         this.productRepository = productRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     // Cache-aside: cevap 60sn Redis'te tutulur (bkz. CacheConfig). Fiyat/stok kararları
@@ -51,12 +54,17 @@ public class ProductController {
 
     // Ürün silme — POST gibi JWT korumalıdır (SecurityConfig'te yalnızca GET'ler herkese açık).
     // Geçmiş siparişler etkilenmez: order_items kendi şemasında productId kopyası tutar.
-    @CacheEvict(value = "products", allEntries = true)
+    @CacheEvict(value = {"products", "ratings"}, allEntries = true)
+    @org.springframework.transaction.annotation.Transactional
     @org.springframework.web.bind.annotation.DeleteMapping("/products/{id}")
     public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
         if (!productRepository.existsById(id)) {
             return ResponseEntity.status(404).body(Map.of("error", "not_found"));
         }
+        // Yorumlarda foreign key yok, o yüzden temizliği burada yapıyoruz:
+        // kalan yorumlar ileride aynı id'yi alan başka bir ürünün puanına
+        // karışırdı.
+        reviewRepository.deleteByProductId(id);
         productRepository.deleteById(id);
         return ResponseEntity.ok(Map.of("deleted", id));
     }

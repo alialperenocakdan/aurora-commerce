@@ -26,6 +26,21 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     default-schema: product
     liquibase-schema: public
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            # Sipariş servisi cevap vermiyorsa hızlı pes et: yorum yazma
+            # doğrulaması yüzünden istek dakikalarca askıda kalmasın.
+            connectTimeout: 3000
+            readTimeout: 5000
+
+# Yorum yazma hakkı için sipariş servisine soruyoruz (servisler arası kapı).
+# INTERNAL_TOKEN order-service ile AYNI değer olmalı.
+order-service:
+  url: ${ORDER_SERVICE_URL:http://localhost:8085}
+  internal-token: ${INTERNAL_TOKEN:local-internal-token}
 
 # Üretimde JWT_SECRET ortam değişkeni MUTLAKA set edilmeli (Render → Environment).
 # Buradaki değer yalnızca yerel geliştirme içindir ve repo'da herkese açıktır.

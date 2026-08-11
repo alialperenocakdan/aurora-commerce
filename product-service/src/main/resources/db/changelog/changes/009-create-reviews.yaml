@@ -1,0 +1,72 @@
+databaseChangeLog:
+  # Ürün yorumları ve puanları.
+  #
+  # Yorum katalog verisidir, o yüzden product şemasında durur. Ama "yorum
+  # yazma hakkı" sipariş verisine bakar; o kontrol product-service'in
+  # order-service'e sorduğu bir çağrıyla yapılır (bkz. ReviewService).
+  # Burada satın alma bilgisinin bir kopyası TUTULMAZ — kopyalanan veri
+  # eskir, iki servis arasında çelişki doğurur.
+  - changeSet:
+      id: 009-create-reviews
+      author: aurora
+      changes:
+        - createTable:
+            tableName: reviews
+            schemaName: product
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints: { primaryKey: true, nullable: false }
+              - column:
+                  name: product_id
+                  type: BIGINT
+                  constraints: { nullable: false }
+              - column:
+                  name: customer_id
+                  type: BIGINT
+                  constraints: { nullable: false }
+              # Puan aralığı veritabanında da kilitli: servis katmanı atlansa
+              # bile (ör. elle SQL) 0 veya 7 puanlı satır oluşamaz, yoksa
+              # ortalama sessizce bozulurdu.
+              # INTEGER (SMALLINT değil): entity'deki Integer ile birebir aynı
+              # tip olmalı, yoksa ddl-auto=validate uygulamayı açtırmaz.
+              - column:
+                  name: rating
+                  type: INTEGER
+                  constraints: { nullable: false }
+              - column:
+                  name: comment
+                  type: VARCHAR(500)
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints: { nullable: false }
+              - column:
+                  name: updated_at
+                  type: TIMESTAMPTZ
+      rollback:
+        - dropTable: { tableName: reviews, schemaName: product }
+
+  - changeSet:
+      id: 010-reviews-constraints
+      author: aurora
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE product.reviews
+                ADD CONSTRAINT reviews_rating_check CHECK (rating BETWEEN 1 AND 5);
+              -- Bir müşteri bir ürüne tek yorum yazar: aksi halde aynı kişi
+              -- puanı istediği kadar tekrarlayıp ortalamayı taşıyabilirdi.
+              ALTER TABLE product.reviews
+                ADD CONSTRAINT reviews_one_per_customer UNIQUE (product_id, customer_id);
+              -- Ürün detayındaki liste ve ortalama sorgusu hep product_id ile gelir
+              CREATE INDEX IF NOT EXISTS idx_reviews_product ON product.reviews (product_id);
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX IF EXISTS product.idx_reviews_product;
+              ALTER TABLE product.reviews DROP CONSTRAINT IF EXISTS reviews_one_per_customer;
+              ALTER TABLE product.reviews DROP CONSTRAINT IF EXISTS reviews_rating_check;
