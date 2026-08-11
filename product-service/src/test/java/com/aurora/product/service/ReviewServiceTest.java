@@ -33,7 +33,8 @@ class ReviewServiceTest {
         reviewRepository = mock(ReviewRepository.class);
         productRepository = mock(ProductRepository.class);
         orderClient = mock(OrderClient.class);
-        service = new ReviewService(reviewRepository, productRepository, orderClient, "tok");
+        service = new ReviewService(
+                reviewRepository, productRepository, orderClient, "tok", "http://test");
 
         when(productRepository.existsById(anyLong())).thenReturn(true);
         when(reviewRepository.findByProductIdAndCustomerId(anyLong(), anyLong()))

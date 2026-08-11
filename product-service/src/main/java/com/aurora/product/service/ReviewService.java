@@ -36,15 +36,21 @@ public class ReviewService {
     private final ProductRepository productRepository;
     private final OrderClient orderClient;
     private final String internalToken;
+    // Yalnızca hata ayıklama için: çağrı başarısız olunca hangi adrese
+    // gidildiği log'a yazılır. "localhost" görürsen ORDER_SERVICE_URL
+    // ortam değişkeni tanımlanmamış demektir.
+    private final String orderServiceUrl;
 
     public ReviewService(ReviewRepository reviewRepository,
                          ProductRepository productRepository,
                          OrderClient orderClient,
-                         @Value("${order-service.internal-token}") String internalToken) {
+                         @Value("${order-service.internal-token}") String internalToken,
+                         @Value("${order-service.url}") String orderServiceUrl) {
         this.reviewRepository = reviewRepository;
         this.productRepository = productRepository;
         this.orderClient = orderClient;
         this.internalToken = internalToken;
+        this.orderServiceUrl = orderServiceUrl;
     }
 
     @Transactional
@@ -183,8 +189,10 @@ public class ReviewService {
             Map<String, Object> body = orderClient.hasPurchased(internalToken, customerId, productId);
             return body != null && Boolean.TRUE.equals(body.get("purchased"));
         } catch (Exception e) {
-            log.warn("Sipariş servisine ulaşılamadı: customerId={}, productId={}, hata={}",
-                    customerId, productId, e.getMessage());
+            // Adres de yazılıyor: yanlış/eksik ORDER_SERVICE_URL en sık
+            // karşılaşılan sebep ve log'dan bir bakışta anlaşılmalı.
+            log.warn("Sipariş servisine ulaşılamadı: url={}, customerId={}, productId={}, hata={}",
+                    orderServiceUrl, customerId, productId, e.getMessage());
             throw new ReviewException("order_service_unavailable", 503);
         }
     }
