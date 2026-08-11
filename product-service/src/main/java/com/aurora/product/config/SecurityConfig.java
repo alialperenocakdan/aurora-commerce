@@ -45,6 +45,13 @@ public class SecurityConfig {
 
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()
+                        // API dokümanı (Swagger) herkese açık: yalnızca uçların
+                        // ŞEKLİNİ gösterir, veri döndürmez. Kapatmak gerekirse
+                        // SWAGGER_ENABLED=false yeterli (bkz. application.yml).
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                        .permitAll()
+                        // Düşük stok raporu yalnızca admin
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
 
                         // DİKKAT: bu üç kural aşağıdaki admin kurallarından ÖNCE gelmeli.
                         // Spring Security ilk eşleşen kuralı uygular; "/products/**"

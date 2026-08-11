@@ -27,4 +27,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // Kategori silinmeden önce içinin boş olduğunu doğrulamak için
     long countByCategory(String category);
+
+    // Düşük stok uyarısı: filtreleme ve sıralama veritabanında yapılır,
+    // en kritik ürün (stoğu en az olan) listenin başında gelir.
+    java.util.List<Product> findByStockLessThanEqualOrderByStockAsc(int threshold);
 }

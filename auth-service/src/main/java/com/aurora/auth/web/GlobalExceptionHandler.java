@@ -46,6 +46,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(422).body(Map.of("error", "same_password"));
     }
 
+    // Var olmayan bir adres sunucu hatası DEĞİLDİR. Aşağıdaki genel
+    // yakalayıcı bunu da 500'e çeviriyordu; hem yanlış cevap veriyor hem de
+    // gerçek hataların arasında "Beklenmeyen hata" satırları biriktiriyordu
+    // (ör. Swagger kapalıyken /swagger-ui.html isteği).
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<?> notFound(
+            org.springframework.web.servlet.resource.NoResourceFoundException e) {
+        return ResponseEntity.status(404).body(Map.of("error", "not_found"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> unexpected(Exception e) {
         log.error("Beklenmeyen hata: {}", e.getMessage(), e);

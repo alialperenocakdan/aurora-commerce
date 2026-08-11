@@ -50,6 +50,11 @@ public class SecurityConfig {
                         .requestMatchers("/auth/register", "/auth/login").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()
+                        // API dokümanı (Swagger) herkese açık: yalnızca uçların
+                        // ŞEKLİNİ gösterir, veri döndürmez. Kapatmak gerekirse
+                        // SWAGGER_ENABLED=false yeterli (bkz. application.yml).
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                        .permitAll()
                         // /auth/me ve /auth/change-password dahil geri kalan her şey token ister
                         .anyRequest().authenticated()
                 )

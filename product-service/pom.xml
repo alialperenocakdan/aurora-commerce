@@ -27,6 +27,11 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Swagger/OpenAPI: /swagger-ui.html adresinden gezilebilir API dokümanı -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
         <!-- order-service'e "bu müşteri bu ürünü aldı mı?" diye sormak için -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

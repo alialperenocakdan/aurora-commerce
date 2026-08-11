@@ -28,6 +28,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()
+                        // API dokümanı (Swagger) herkese açık: yalnızca uçların
+                        // ŞEKLİNİ gösterir, veri döndürmez. Kapatmak gerekirse
+                        // SWAGGER_ENABLED=false yeterli (bkz. application.yml).
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                        .permitAll()
                         // Vitrindeki kampanya şeridi: giriş yapmamış ziyaretçi de görebilmeli
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/coupons/active").permitAll()
                         // Servisler arası kapı: JWT değil, X-Internal-Token ile korunur.

@@ -52,3 +52,13 @@ logging:
   structured:
     format:
       console: ecs
+# Swagger/OpenAPI — /swagger-ui.html
+# Üretimde kapatmak istersen SWAGGER_ENABLED=false yeterli; uygulama normal çalışır.
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
+    # Uçlar HTTP metoduna göre değil, ait oldukları gruba göre sıralansın
+    operations-sorter: alpha
+    tags-sorter: alpha
