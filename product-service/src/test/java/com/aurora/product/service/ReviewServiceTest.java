@@ -160,6 +160,38 @@ class ReviewServiceTest {
         verify(orderClient, never()).hasPurchased(anyString(), anyLong(), anyLong());
     }
 
+    // Arayüzdeki mesajın doğru olması buna bağlı: "almadın" ile
+    // "kontrol edemedim" karışırsa, ayarı eksik bir sunucu müşteriyi
+    // haksız yere satın almamış gibi gösterir.
+    @Test
+    void satinAlanIcinDurumEligible() {
+        satinAldi(true);
+        assertEquals(ReviewService.ELIGIBLE, service.reviewStatus(1L, 7L));
+    }
+
+    @Test
+    void satinAlmayanIcinDurumNotPurchased() {
+        satinAldi(false);
+        assertEquals(ReviewService.NOT_PURCHASED, service.reviewStatus(1L, 7L));
+    }
+
+    @Test
+    void siparisServisineUlasilamazsaDurumCheckFailed() {
+        when(orderClient.hasPurchased(anyString(), anyLong(), anyLong()))
+                .thenThrow(new RuntimeException("connection refused"));
+
+        // "not_purchased" DEĞİL: müşteri gerçekten almış olabilir
+        assertEquals(ReviewService.CHECK_FAILED, service.reviewStatus(1L, 7L));
+    }
+
+    @Test
+    void yorumuOlanIcinDurumAlreadyReviewed() {
+        when(reviewRepository.findByProductIdAndCustomerId(1L, 7L))
+                .thenReturn(Optional.of(new Review(1L, 7L, 4, "yorum")));
+
+        assertEquals(ReviewService.ALREADY_REVIEWED, service.reviewStatus(1L, 7L));
+    }
+
     @Test
     void ortalamaTekOndalikaYuvarlanir() {
         // 4 + 5 + 5 = 14 / 3 = 4.666... → 4.7

@@ -97,18 +97,28 @@ public class ReviewService {
         return reviewRepository.findByProductIdAndCustomerId(productId, customerId).orElse(null);
     }
 
+    // Yorum hakkının SEBEBİ. Sadece "evet/hayır" döndürmek yetmiyordu:
+    // "bu ürünü almadın" ile "şu an kontrol edemiyorum" arayüzde aynı mesaja
+    // düşünce, sipariş servisine ulaşılamadığı durumlar satın almamış gibi
+    // görünüyordu ve hatanın izi kayboluyordu.
+    public static final String ELIGIBLE = "eligible";
+    public static final String ALREADY_REVIEWED = "already_reviewed";
+    public static final String NOT_PURCHASED = "not_purchased";
+    public static final String CHECK_FAILED = "check_failed";
+
     // Ürün detayında formu göstermeden önce sorulur. Sipariş servisi cevap
-    // vermezse "yazamaz" deyip sayfayı ayakta tutuyoruz: yorum yazma denemesi
-    // yine de gerçek cevabı alacak (create() aynı kontrolü sert yapıyor).
-    public boolean canReviewQuietly(Long productId, Long customerId) {
+    // vermezse yorum yazdırmıyoruz ama sayfa ayakta kalıyor; yorum yazma
+    // denemesi yine de gerçek cevabı alacak (create() aynı kontrolü sert yapıyor).
+    public String reviewStatus(Long productId, Long customerId) {
         if (reviewRepository.findByProductIdAndCustomerId(productId, customerId).isPresent()) {
-            return false; // zaten yorumu var
+            return ALREADY_REVIEWED;
         }
         try {
-            return purchased(customerId, productId);
+            return purchased(customerId, productId) ? ELIGIBLE : NOT_PURCHASED;
         } catch (ReviewException e) {
-            log.warn("Yorum hakkı sorulamadı (sipariş servisi): productId={}", productId);
-            return false;
+            log.warn("Yorum hakkı sorulamadı (sipariş servisine ulaşılamıyor): productId={}",
+                    productId);
+            return CHECK_FAILED;
         }
     }
 

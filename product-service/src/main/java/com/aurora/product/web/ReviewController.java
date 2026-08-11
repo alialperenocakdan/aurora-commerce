@@ -40,8 +40,13 @@ public class ReviewController {
         body.put("summary", reviewService.summary(productId));
         body.put("items", items);
         // Giriş yoksa form gösterilmez; sunucuya boşuna sormuyoruz.
-        body.put("canReview",
-                customerId != null && reviewService.canReviewQuietly(productId, customerId));
+        String status = customerId == null
+                ? "anonymous"
+                : reviewService.reviewStatus(productId, customerId);
+        body.put("canReview", ReviewService.ELIGIBLE.equals(status));
+        // Arayüz doğru mesajı gösterebilsin diye sebebi de gönderiyoruz:
+        // "almadın" ile "kontrol edemedim" farklı şeyler.
+        body.put("reviewStatus", status);
         Review mine = customerId == null ? null : reviewService.mine(productId, customerId);
         body.put("mine", mine == null ? null : toView(mine, customerId));
         return ResponseEntity.ok(body);
